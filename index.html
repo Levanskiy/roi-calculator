@@ -348,6 +348,54 @@ function sanitizeInputs() {
   });
 }
 
+// NPV of monthly cash flows at a given monthly rate.
+function npv(rate, flows) {
+  let total = 0;
+  for (let m = 0; m < flows.length; m++) total += flows[m] / Math.pow(1+rate, m);
+  return total;
+}
+
+// Solves for the monthly rate where NPV = 0 via bisection. Returns null if the
+// cash flows never change sign (no IRR exists).
+function solveIRR(flows) {
+  let lo = -0.99, hi = 1;
+  let nLo = npv(lo, flows), nHi = npv(hi, flows);
+  if ((nLo > 0) === (nHi > 0)) return null;
+  for (let i = 0; i < 100; i++) {
+    const mid = (lo+hi)/2;
+    const nMid = npv(mid, flows);
+    if ((nMid > 0) === (nLo > 0)) { lo = mid; nLo = nMid; } else { hi = mid; }
+  }
+  return (lo+hi)/2;
+}
+
+// Builds a 60-month cash-flow series for the off-plan investment (construction
+// payments spread evenly, lump sum at handover, net PHP flow during the
+// post-handover instalment period, sale at value5 at month 60) and returns the
+// annualised IRR — this captures the benefit of deferred payments that the
+// simple "total return / entry" ROI does not.
+function computeOffplanIRR(months, dealFees, pricePortionToHandover, handoverPayment, phpOn, phpMonths, devPayMonthly, noi, value5) {
+  const horizon = 60;
+  const monthsToHandover = Math.max(1, Math.round(months));
+  const constrMonthly = pricePortionToHandover / monthsToHandover;
+  const noiMonthly = noi/12;
+  const flows = new Array(horizon+1).fill(0);
+  for (let m = 1; m <= horizon; m++) {
+    let cf = 0;
+    if (m === 1) cf -= dealFees; // DLD/Oqood/комиссия — платятся при подписании, не растянуты
+    if (m <= monthsToHandover) cf -= constrMonthly;
+    if (m === monthsToHandover) cf -= handoverPayment;
+    if (m > monthsToHandover) {
+      const k = m - monthsToHandover;
+      cf += (phpOn && k <= phpMonths) ? (noiMonthly - devPayMonthly) : noiMonthly;
+    }
+    if (m === horizon) cf += value5;
+    flows[m] = cf;
+  }
+  const monthlyRate = solveIRR(flows);
+  return monthlyRate === null ? null : (Math.pow(1+monthlyRate, 12) - 1) * 100;
+}
+
 function calc() {
   const P = num('price');
   const isOff = M.prop === 'offplan';
@@ -422,30 +470,34 @@ function calc() {
 
     // Post-handover instalment to the developer, paid out of rental income
     const devPayMonthly = (phpOn && phpMonths>0) ? P*(phpPct/100)/phpMonths : 0;
-    const devPayAnnual = devPayMonthly*12;
     const noiMonthly = noi/12;
     const phpNetMonthly = noiMonthly - devPayMonthly;
     const coveragePct = devPayMonthly>0 ? (noiMonthly/devPayMonthly*100) : null;
 
-    // 5-year horizon: no rent before handover; PHP instalments reduce cash flow after
+    // 5-year horizon: no rent before handover. NOI here is gross rental income —
+    // developer instalments are a financing cash flow already reflected in "entry"
+    // (the full price), not a deduction from rental return.
     const toHandoverYears = months/12;
-    let phpYears = 0, rentalCashTotal = 0;
+    let rentalCashTotal = 0;
     if (toHandoverYears < 5) {
       value5 = valueAtHandover * Math.pow(1+growthPost/100, 5-toHandoverYears);
       rentYears = 5 - toHandoverYears;
-      phpYears = phpOn ? Math.min(rentYears, phpMonths/12) : 0;
-      rentalCashTotal = noi*rentYears - devPayAnnual*phpYears;
+      rentalCashTotal = noi*rentYears;
     } else {
       value5 = P*Math.pow(1+growthPre/100, 5);
       rentYears = 0;
     }
-    totalReturn5 = entry>0 ? (value5-P+rentalCashTotal)/entry*100 : 0;
+    totalReturn5 = entry>0 ? ((value5-entry)+rentalCashTotal)/entry*100 : 0;
     annualized5 = (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/5)-1)*100;
+
+    const dealFees = dld + oqood + commission + vat;
+    const pricePortionToHandover = P*(paidPct/100);
+    const irr5 = computeOffplanIRR(months, dealFees, pricePortionToHandover, handoverPayment, phpOn, phpMonths, devPayMonthly, noi, value5);
 
     offplan = {months, paidPct, phpPct, phpPctRaw, phpMonths, phpOn, handoverPct, planError, growthPre, growthPost,
       investedToHandover, valueAtHandover, offplanGain, offplanROI, offplanAnnual, handoverPayment,
-      devPayMonthly, devPayAnnual, noiMonthly, phpNetMonthly, coveragePct,
-      toHandoverYears, phpYears, rentalCashTotal};
+      devPayMonthly, noiMonthly, phpNetMonthly, coveragePct,
+      toHandoverYears, rentalCashTotal, irr5};
   } else {
     const growth = num('growth');
     value5 = P*Math.pow(1+growth/100, 5);
@@ -603,10 +655,11 @@ function recalc() {
     + row('Стоимость через 5 лет', fmt(r.value5)+' AED')
     + row('Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
     + (o.toHandoverYears < 5
-        ? row(`Чистый поток от аренды за ${fmt(r.rentYears,1)} лет (с учётом PHP)`, (o.rentalCashTotal>=0?'+':'')+fmt(o.rentalCashTotal)+' AED')
+        ? row(`Чистый арендный доход за ${fmt(r.rentYears,1)} лет`, '+'+fmt(o.rentalCashTotal)+' AED')
         : row('Доход от аренды', '0 AED (handover ещё впереди)'))
     + row('Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
     + row('≈ годовых', fmt(r.annualized5,2)+'%')
+    + row('IRR — с учётом отложенных платежей', o.irr5===null ? '—' : fmt(o.irr5,1)+'%', {bold:1, color:'var(--green)'})
     + `</div>`;
   } else {
     html += `<div class="section"><div class="sec-title">Горизонт 5 лет · рост ${num('growth')}%/год</div>`
@@ -686,9 +739,10 @@ function buildReport() {
     + row('Прогноз стоимости', fmt(r.value5)+' AED')
     + row('Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
     + (o.toHandoverYears < 5
-        ? row(`Чистый поток от аренды за ${fmt(r.rentYears,1)} лет (с учётом PHP)`, (o.rentalCashTotal>=0?'+':'')+fmt(o.rentalCashTotal)+' AED')
+        ? row(`Чистый арендный доход за ${fmt(r.rentYears,1)} лет`, '+'+fmt(o.rentalCashTotal)+' AED')
         : row('Доход от аренды', '0 AED (handover ещё впереди)'))
-    + row('Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}% годовых`, {bold:1, color:'var(--green)'});
+    + row('Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}% годовых`, {bold:1, color:'var(--green)'})
+    + row('IRR — с учётом отложенных платежей', o.irr5===null ? '—' : fmt(o.irr5,1)+'%', {bold:1, color:'var(--green)'});
   } else {
     html += `<h3>Горизонт 5 лет · рост ${num('growth')}%/год</h3>`
     + row('Прогноз стоимости', fmt(r.value5)+' AED')
