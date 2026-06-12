@@ -153,20 +153,21 @@
           </div>
         </div>
 
-        <label class="checkbox-row"><input type="checkbox" id="phpEnabled" onchange="syncVisibility(); recalc()"> Post-handover план (рассрочка после передачи ключей)</label>
-
-        <div class="cols2 hidden" id="sec-php-fields">
-          <div class="field"><div class="f-label">Post-handover, %</div>
-            <div class="f-box"><input id="phpPct" inputmode="decimal" value="20" oninput="recalc()"><span class="suffix">%</span></div>
+        <div class="cols2">
+          <div class="field"><div class="f-label">На handover, %</div>
+            <div class="f-box"><input id="handoverPct" inputmode="decimal" value="40" oninput="recalc()"><span class="suffix">%</span></div>
+            <div class="f-hint">платёж при передаче ключей</div>
           </div>
-          <div class="field"><div class="f-label">Срок post-handover</div>
+          <div class="field hidden" id="f-phpMonths"><div class="f-label">Срок post-handover</div>
             <div class="f-box"><input id="phpMonths" inputmode="decimal" value="24" oninput="recalc()"><span class="suffix">мес.</span></div>
           </div>
         </div>
 
-        <div class="calc-row" id="handoverPctRow">
-          <span class="l">На handover, %<span class="hint" id="handoverPctHint"></span></span>
-          <span class="v" id="handoverPctVal">—</span>
+        <label class="checkbox-row"><input type="checkbox" id="phpEnabled" onchange="syncVisibility(); recalc()"> Post-handover план (рассрочка после передачи ключей)</label>
+
+        <div class="calc-row" id="planCheckRow">
+          <span class="l"><span id="planCheckLabel"></span><span class="hint" id="planCheckHint"></span></span>
+          <span class="v" id="planCheckVal">—</span>
         </div>
 
         <div class="cols2">
@@ -293,34 +294,52 @@ function syncVisibility() {
   document.getElementById('sec-short').classList.toggle('hidden', !isShort);
   document.getElementById('f-mgmt').classList.toggle('hidden', isShort);
   document.getElementById('f-growth').classList.toggle('hidden', isOff);
-  document.getElementById('sec-php-fields').classList.toggle('hidden', !phpOn);
+  document.getElementById('f-phpMonths').classList.toggle('hidden', !phpOn);
 
   document.getElementById('rentLabel').textContent = isOff ? 'Ожидаемая аренда после handover' : 'Годовая аренда';
   document.getElementById('adrLabel').textContent = isOff ? 'Ожидаемый ADR после handover' : 'ADR — ставка/ночь';
   document.getElementById('sec-opex-title').textContent = isOff ? 'Ежегодные расходы и прогноз (после handover)' : 'Ежегодные расходы и прогноз';
 
-  updateHandoverPct();
+  updatePlanCheck();
 }
 
-function updateHandoverPct() {
+// «До handover» и «На handover» — реальные платежи, которые вводит пользователь.
+// Без PHP их сумма должна быть 100%. С PHP включённым «Post-handover, %» — это остаток
+// (100% − До handover − На handover), который уходит в рассрочку после передачи ключей.
+function updatePlanCheck() {
   const phpOn = document.getElementById('phpEnabled').checked;
   const paid = num('paidPct');
-  const php = phpOn ? num('phpPct') : 0;
-  const handover = 100 - paid - php;
-  const rowEl = document.getElementById('handoverPctRow');
-  const valEl = document.getElementById('handoverPctVal');
-  const hintEl = document.getElementById('handoverPctHint');
-  valEl.textContent = fmt(handover, 1) + '%';
-  if (handover < 0) {
-    rowEl.classList.add('err');
-    hintEl.textContent = `Сумма частей плана превышает 100% на ${fmt(-handover,1)} п.п. — проверьте проценты`;
+  const handover = num('handoverPct');
+  const rowEl = document.getElementById('planCheckRow');
+  const labelEl = document.getElementById('planCheckLabel');
+  const valEl = document.getElementById('planCheckVal');
+  const hintEl = document.getElementById('planCheckHint');
+
+  if (phpOn) {
+    const post = 100 - paid - handover;
+    labelEl.textContent = 'Post-handover, %';
+    valEl.textContent = fmt(post, 1) + '%';
+    if (post < 0) {
+      rowEl.classList.add('err');
+      hintEl.textContent = `Сумма «До handover» (${fmt(paid,1)}%) + «На handover» (${fmt(handover,1)}%) превышает 100% на ${fmt(-post,1)} п.п. — для post-handover не остаётся места`;
+    } else {
+      rowEl.classList.remove('err');
+      hintEl.textContent = `100% − ${fmt(paid,1)}% (до handover) − ${fmt(handover,1)}% (на handover)`;
+    }
+    return post;
   } else {
-    rowEl.classList.remove('err');
-    hintEl.textContent = phpOn
-      ? `100% − ${fmt(paid,1)}% (до handover) − ${fmt(php,1)}% (post-handover)`
-      : `100% − ${fmt(paid,1)}% (до handover)`;
+    const total = paid + handover;
+    labelEl.textContent = 'Итого по плану, %';
+    valEl.textContent = fmt(total, 1) + '%';
+    if (Math.abs(total - 100) > 0.001) {
+      rowEl.classList.add('err');
+      hintEl.textContent = `«До handover» + «На handover» должны давать 100% (сейчас ${fmt(total,1)}%) — проверьте проценты`;
+    } else {
+      rowEl.classList.remove('err');
+      hintEl.textContent = `«До handover» + «На handover» = 100%`;
+    }
+    return null;
   }
-  return handover;
 }
 
 function sanitizeInputs() {
@@ -386,9 +405,11 @@ function calc() {
   if (isOff) {
     const months = num('handoverMonths');
     const paidPct = num('paidPct');
-    const phpPct = phpOn ? num('phpPct') : 0;
+    const handoverPct = num('handoverPct');
     const phpMonths = phpOn ? num('phpMonths') : 0;
-    const handoverPct = 100 - paidPct - phpPct;
+    const phpPctRaw = 100 - paidPct - handoverPct;
+    const phpPct = phpOn ? Math.max(0, phpPctRaw) : 0;
+    const planError = phpOn ? (phpPctRaw < -1e-9) : (Math.abs(paidPct + handoverPct - 100) > 0.001);
     const growthPre = num('growthPre');
     const growthPost = num('growthPost');
 
@@ -421,7 +442,7 @@ function calc() {
     totalReturn5 = entry>0 ? (value5-P+rentalCashTotal)/entry*100 : 0;
     annualized5 = (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/5)-1)*100;
 
-    offplan = {months, paidPct, phpPct, phpMonths, phpOn, handoverPct, growthPre, growthPost,
+    offplan = {months, paidPct, phpPct, phpPctRaw, phpMonths, phpOn, handoverPct, planError, growthPre, growthPost,
       investedToHandover, valueAtHandover, offplanGain, offplanROI, offplanAnnual, handoverPayment,
       devPayMonthly, devPayAnnual, noiMonthly, phpNetMonthly, coveragePct,
       toHandoverYears, phpYears, rentalCashTotal};
@@ -500,7 +521,7 @@ function offplanTimeline(r) {
 
 function recalc() {
   sanitizeInputs();
-  updateHandoverPct();
+  updatePlanCheck();
   const r = calc();
   const yColor = r.netYield>=6 ? 'var(--green)' : r.netYield>=4.5 ? 'var(--brass)' : 'var(--red)';
   const heroColor = r.netYield<4.5 ? '#E8B59F' : '#E9D9A8';
@@ -548,11 +569,13 @@ function recalc() {
   if (r.isOff) {
     const o = r.offplan;
 
-    if (o.handoverPct < 0) {
+    if (o.planError) {
       html += `<div class="section" style="border-color:var(--red)"><div class="sec-title" style="color:var(--red)">⚠ Ошибка плана платежей</div>`
-      + `<div style="font-size:13px;color:var(--red)">Сумма «До handover» (${fmt(o.paidPct,1)}%)`
-      + (o.phpOn ? ` + «Post-handover» (${fmt(o.phpPct,1)}%)` : '')
-      + ` превышает 100%. Проверьте проценты в разделе «Офф-план: план платежей».</div></div>`;
+      + `<div style="font-size:13px;color:var(--red)">`
+      + (o.phpOn
+          ? `Сумма «До handover» (${fmt(o.paidPct,1)}%) + «На handover» (${fmt(o.handoverPct,1)}%) превышает 100% — для post-handover не остаётся места.`
+          : `Сумма «До handover» (${fmt(o.paidPct,1)}%) + «На handover» (${fmt(o.handoverPct,1)}%) должна быть 100%, сейчас ${fmt(o.paidPct+o.handoverPct,1)}%.`)
+      + ` Проверьте проценты в разделе «Офф-план: план платежей».</div></div>`;
     }
 
     html += `<div class="section"><div class="sec-title">Офф-план: ROI на handover (${fmt(o.months)} мес.)</div>`
@@ -639,8 +662,10 @@ function buildReport() {
   if (r.isOff) {
     const o = r.offplan;
 
-    if (o.handoverPct < 0) {
-      html += `<div class="rep-foot" style="color:var(--red);border-top:none;margin-top:8px">⚠ Сумма частей плана платежей превышает 100% — «На handover» получилось ${fmt(o.handoverPct,1)}%. Проверьте проценты перед использованием отчёта.</div>`;
+    if (o.planError) {
+      html += `<div class="rep-foot" style="color:var(--red);border-top:none;margin-top:8px">⚠ Сумма «До handover» (${fmt(o.paidPct,1)}%) + «На handover» (${fmt(o.handoverPct,1)}%)`
+        + (o.phpOn ? ' превышает 100% — для post-handover не остаётся места.' : ` должна быть 100% (сейчас ${fmt(o.paidPct+o.handoverPct,1)}%).`)
+        + ' Проверьте проценты перед использованием отчёта.</div>';
     }
 
     html += `<h3>ROI на handover (${fmt(o.months)} мес.)</h3>`
