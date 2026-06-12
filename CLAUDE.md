@@ -27,11 +27,17 @@ roi-calculator/
 Стартовые значения полей (цена, площадь, ставки и т.д.) — это атрибуты `value="..."` у
 `<input>` в `index.html`. DLD/комиссии/трасти-сборы — константы внутри `calc()`.
 
+## Ссылка
+
+**https://levanskiy.github.io/roi-calculator/**
+
+Репозиторий: https://github.com/Levanskiy/roi-calculator
+
 ## Деплой (GitHub Pages)
 
 1. Закоммитить изменения в `main`.
 2. `git push` — Pages пересобирается автоматически (Settings → Pages → Deploy from branch `main` / root).
-3. Ссылка: см. README или Settings → Pages в репозитории.
+3. Ссылка остаётся той же: https://levanskiy.github.io/roi-calculator/
 
 После любых правок в `index.html`/иконках — обновить `CACHE` версию в `sw.js` (например `roi-dubai-v2`), иначе у пользователей со старым кэшем не подхватится новая версия сразу.
 
