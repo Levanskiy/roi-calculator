@@ -39,6 +39,18 @@
   .f-box .suffix { padding:0 12px; font-size:13px; color:var(--sub); border-left:1px solid var(--line); align-self:stretch; display:flex; align-items:center; background:#F4F5F2; white-space:nowrap; }
   .f-hint { font-size:12px; color:var(--sub); margin-top:4px; }
   .field { margin-bottom:14px; }
+  .checkbox-row { display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:700; color:var(--ink); margin-bottom:14px; cursor:pointer; }
+  .checkbox-row input { width:16px; height:16px; accent-color:var(--green); }
+  .calc-row { display:flex; justify-content:space-between; align-items:baseline; padding:8px 10px; border-radius:8px; background:#F4F5F2; font-size:13px; margin-bottom:14px; }
+  .calc-row .l { color:var(--sub); font-weight:600; }
+  .calc-row .v { font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:14px; }
+  .calc-row.err { background:#F7E7E2; }
+  .calc-row.err .v { color:var(--red); }
+  .calc-row .hint { display:block; font-size:11px; font-weight:500; color:var(--sub); margin-top:2px; }
+  .tl-period { border-radius:10px; background:#F8F9F6; border:1px solid var(--line); padding:12px 14px; margin-bottom:10px; }
+  .tl-period .tl-head { font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; color:var(--brass); margin-bottom:6px; }
+  .tl-period .row { border-bottom:1px dashed var(--line); }
+  .tl-period .row:last-child { border-bottom:none; }
   .cols2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .cols3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
   .toggle { display:flex; background:#E8EAE6; border-radius:9px; padding:3px; margin-bottom:14px; }
@@ -130,14 +142,39 @@
       </div>
 
       <div class="section hidden" id="sec-offplan">
-        <div class="sec-title">Офф-план</div>
+        <div class="sec-title">Офф-план: план платежей</div>
         <div class="cols2">
-          <div class="field"><div class="f-label">Оплата до сдачи</div>
-            <div class="f-box"><input id="paidPct" inputmode="decimal" value="60" oninput="recalc()"><span class="suffix">%</span></div>
-            <div class="f-hint">по плану платежей</div>
-          </div>
-          <div class="field"><div class="f-label">До handover</div>
+          <div class="field"><div class="f-label">До handover, мес.</div>
             <div class="f-box"><input id="handoverMonths" inputmode="decimal" value="24" oninput="recalc()"><span class="suffix">мес.</span></div>
+          </div>
+          <div class="field"><div class="f-label">До handover, %</div>
+            <div class="f-box"><input id="paidPct" inputmode="decimal" value="60" oninput="recalc()"><span class="suffix">%</span></div>
+            <div class="f-hint">платежи во время стройки</div>
+          </div>
+        </div>
+
+        <label class="checkbox-row"><input type="checkbox" id="phpEnabled" onchange="syncVisibility(); recalc()"> Post-handover план (рассрочка после передачи ключей)</label>
+
+        <div class="cols2 hidden" id="sec-php-fields">
+          <div class="field"><div class="f-label">Post-handover, %</div>
+            <div class="f-box"><input id="phpPct" inputmode="decimal" value="20" oninput="recalc()"><span class="suffix">%</span></div>
+          </div>
+          <div class="field"><div class="f-label">Срок post-handover</div>
+            <div class="f-box"><input id="phpMonths" inputmode="decimal" value="24" oninput="recalc()"><span class="suffix">мес.</span></div>
+          </div>
+        </div>
+
+        <div class="calc-row" id="handoverPctRow">
+          <span class="l">На handover, %<span class="hint" id="handoverPctHint"></span></span>
+          <span class="v" id="handoverPctVal">—</span>
+        </div>
+
+        <div class="cols2">
+          <div class="field"><div class="f-label">Рост до handover</div>
+            <div class="f-box"><input id="growthPre" inputmode="decimal" value="8" oninput="recalc()"><span class="suffix">%/год</span></div>
+          </div>
+          <div class="field"><div class="f-label">Рост после handover</div>
+            <div class="f-box"><input id="growthPost" inputmode="decimal" value="5" oninput="recalc()"><span class="suffix">%/год</span></div>
           </div>
         </div>
       </div>
@@ -160,7 +197,7 @@
       <div class="section" id="sec-long">
         <div class="sec-title">Долгосрочная аренда</div>
         <div class="cols2">
-          <div class="field"><div class="f-label">Годовая аренда</div>
+          <div class="field"><div class="f-label" id="rentLabel">Годовая аренда</div>
             <div class="f-box"><input id="rent" inputmode="decimal" value="110000" oninput="recalc()"><span class="suffix">AED</span></div>
           </div>
           <div class="field"><div class="f-label">Заполняемость</div>
@@ -172,7 +209,7 @@
       <div class="section hidden" id="sec-short">
         <div class="sec-title">Краткосрочная аренда</div>
         <div class="cols2">
-          <div class="field"><div class="f-label">ADR — ставка/ночь</div>
+          <div class="field"><div class="f-label" id="adrLabel">ADR — ставка/ночь</div>
             <div class="f-box"><input id="adr" inputmode="decimal" value="550" oninput="recalc()"><span class="suffix">AED</span></div>
           </div>
           <div class="field"><div class="f-label">Заполняемость</div>
@@ -191,7 +228,7 @@
       </div>
 
       <div class="section">
-        <div class="sec-title">Ежегодные расходы и прогноз</div>
+        <div class="sec-title" id="sec-opex-title">Ежегодные расходы и прогноз</div>
         <div class="cols2">
           <div class="field"><div class="f-label">Service charge</div>
             <div class="f-box"><input id="scRate" inputmode="decimal" value="18" oninput="recalc()"><span class="suffix">AED/sqft</span></div>
@@ -205,7 +242,7 @@
             <div class="f-box"><input id="mgmtPct" inputmode="decimal" value="0" oninput="recalc()"><span class="suffix">%</span></div>
             <div class="f-hint">0 — если сам</div>
           </div>
-          <div class="field"><div class="f-label">Рост цены</div>
+          <div class="field" id="f-growth"><div class="f-label">Рост цены</div>
             <div class="f-box"><input id="growth" inputmode="decimal" value="5" oninput="recalc()"><span class="suffix">%/год</span></div>
           </div>
         </div>
@@ -247,12 +284,43 @@ function syncVisibility() {
   const isOff = M.prop === 'offplan';
   const isMort = M.fin === 'mortgage' && !isOff;
   const isShort = M.rent === 'short';
+  const phpOn = isOff && document.getElementById('phpEnabled').checked;
+
   document.getElementById('sec-offplan').classList.toggle('hidden', !isOff);
   document.getElementById('tg-fin').classList.toggle('hidden', isOff);
   document.getElementById('sec-mortgage').classList.toggle('hidden', !isMort);
   document.getElementById('sec-long').classList.toggle('hidden', isShort);
   document.getElementById('sec-short').classList.toggle('hidden', !isShort);
   document.getElementById('f-mgmt').classList.toggle('hidden', isShort);
+  document.getElementById('f-growth').classList.toggle('hidden', isOff);
+  document.getElementById('sec-php-fields').classList.toggle('hidden', !phpOn);
+
+  document.getElementById('rentLabel').textContent = isOff ? 'Ожидаемая аренда после handover' : 'Годовая аренда';
+  document.getElementById('adrLabel').textContent = isOff ? 'Ожидаемый ADR после handover' : 'ADR — ставка/ночь';
+  document.getElementById('sec-opex-title').textContent = isOff ? 'Ежегодные расходы и прогноз (после handover)' : 'Ежегодные расходы и прогноз';
+
+  updateHandoverPct();
+}
+
+function updateHandoverPct() {
+  const phpOn = document.getElementById('phpEnabled').checked;
+  const paid = num('paidPct');
+  const php = phpOn ? num('phpPct') : 0;
+  const handover = 100 - paid - php;
+  const rowEl = document.getElementById('handoverPctRow');
+  const valEl = document.getElementById('handoverPctVal');
+  const hintEl = document.getElementById('handoverPctHint');
+  valEl.textContent = fmt(handover, 1) + '%';
+  if (handover < 0) {
+    rowEl.classList.add('err');
+    hintEl.textContent = `Сумма частей плана превышает 100% на ${fmt(-handover,1)} п.п. — проверьте проценты`;
+  } else {
+    rowEl.classList.remove('err');
+    hintEl.textContent = phpOn
+      ? `100% − ${fmt(paid,1)}% (до handover) − ${fmt(php,1)}% (post-handover)`
+      : `100% − ${fmt(paid,1)}% (до handover)`;
+  }
+  return handover;
 }
 
 function sanitizeInputs() {
@@ -266,6 +334,7 @@ function calc() {
   const isOff = M.prop === 'offplan';
   const isMort = M.fin === 'mortgage' && !isOff;
   const isShort = M.rent === 'short';
+  const phpOn = isOff && document.getElementById('phpEnabled').checked;
 
   const dld = P * (num('dldPct')/100) + 580;
   const commission = P * (num('commPct')/100);
@@ -287,6 +356,8 @@ function calc() {
   const entry = P + dealCosts + furn;
   const cashInvested = isMort ? down + dealCosts + furn : entry;
 
+  // Revenue/opex represent the steady post-handover state for off-plan,
+  // and the current state for ready properties.
   let grossRevenue, effRevenue, operatorFee = 0, util = 0;
   if (isShort) {
     grossRevenue = num('adr')*365*(num('occShort')/100);
@@ -310,31 +381,126 @@ function calc() {
   const coc = cashInvested>0 ? cashFlow/cashInvested*100 : 0;
   const payback = cashFlow>0 ? cashInvested/cashFlow : Infinity;
 
-  const months = num('handoverMonths');
-  const investedToHandover = P*(num('paidPct')/100) + dld + oqood + commission + vat;
-  const valueAtHandover = P*Math.pow(1+num('growth')/100, months/12);
-  const offplanGain = valueAtHandover - P;
-  const offplanROI = investedToHandover>0 ? offplanGain/investedToHandover*100 : 0;
-  const offplanAnnual = months>0 ? offplanROI/(months/12) : 0;
+  let value5, rentYears, totalReturn5, annualized5, offplan = null;
 
-  const value5 = P*Math.pow(1+num('growth')/100, 5);
-  const rentYears = isOff ? Math.max(0, 5-months/12) : 5;
-  const baseInvest = isOff ? entry : cashInvested;
-  const totalReturn5 = baseInvest>0 ? (value5-P+cashFlow*rentYears)/baseInvest*100 : 0;
-  const annualized5 = (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/5)-1)*100;
+  if (isOff) {
+    const months = num('handoverMonths');
+    const paidPct = num('paidPct');
+    const phpPct = phpOn ? num('phpPct') : 0;
+    const phpMonths = phpOn ? num('phpMonths') : 0;
+    const handoverPct = 100 - paidPct - phpPct;
+    const growthPre = num('growthPre');
+    const growthPost = num('growthPost');
+
+    const investedToHandover = P*(paidPct/100) + dld + oqood + commission + vat;
+    const valueAtHandover = P*Math.pow(1+growthPre/100, months/12);
+    const offplanGain = valueAtHandover - P;
+    const offplanROI = investedToHandover>0 ? offplanGain/investedToHandover*100 : 0;
+    const offplanAnnual = months>0 ? offplanROI/(months/12) : 0;
+    const handoverPayment = P * (handoverPct/100);
+
+    // Post-handover instalment to the developer, paid out of rental income
+    const devPayMonthly = (phpOn && phpMonths>0) ? P*(phpPct/100)/phpMonths : 0;
+    const devPayAnnual = devPayMonthly*12;
+    const noiMonthly = noi/12;
+    const phpNetMonthly = noiMonthly - devPayMonthly;
+    const coveragePct = devPayMonthly>0 ? (noiMonthly/devPayMonthly*100) : null;
+
+    // 5-year horizon: no rent before handover; PHP instalments reduce cash flow after
+    const toHandoverYears = months/12;
+    let phpYears = 0, rentalCashTotal = 0;
+    if (toHandoverYears < 5) {
+      value5 = valueAtHandover * Math.pow(1+growthPost/100, 5-toHandoverYears);
+      rentYears = 5 - toHandoverYears;
+      phpYears = phpOn ? Math.min(rentYears, phpMonths/12) : 0;
+      rentalCashTotal = noi*rentYears - devPayAnnual*phpYears;
+    } else {
+      value5 = P*Math.pow(1+growthPre/100, 5);
+      rentYears = 0;
+    }
+    totalReturn5 = entry>0 ? (value5-P+rentalCashTotal)/entry*100 : 0;
+    annualized5 = (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/5)-1)*100;
+
+    offplan = {months, paidPct, phpPct, phpMonths, phpOn, handoverPct, growthPre, growthPost,
+      investedToHandover, valueAtHandover, offplanGain, offplanROI, offplanAnnual, handoverPayment,
+      devPayMonthly, devPayAnnual, noiMonthly, phpNetMonthly, coveragePct,
+      toHandoverYears, phpYears, rentalCashTotal};
+  } else {
+    const growth = num('growth');
+    value5 = P*Math.pow(1+growth/100, 5);
+    rentYears = 5;
+    const baseInvest = cashInvested;
+    totalReturn5 = baseInvest>0 ? (value5-P+cashFlow*rentYears)/baseInvest*100 : 0;
+    annualized5 = (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/5)-1)*100;
+  }
 
   return {P,isOff,isMort,isShort,dld,commission,vat,trustee,oqood,down,loan,mortgageReg,bankFee,valuation,
     monthlyPayment,debtService,dealCosts,entry,cashInvested,grossRevenue,effRevenue,operatorFee,util,
     serviceCharge,mgmt,opex,noi,cashFlow,grossYield,netYield,coc,payback,
-    investedToHandover,valueAtHandover,offplanGain,offplanROI,offplanAnnual,
-    value5,rentYears,totalReturn5,annualized5,furn};
+    value5,rentYears,totalReturn5,annualized5,furn,offplan};
 }
 
 const row = (l,v,opts={}) =>
   `<div class="row ${opts.bold?'bold':''} ${opts.indent?'indent':''}"><span class="l">${l}</span><span class="v" style="color:${opts.color||'var(--ink)'}">${v}</span></div>`;
 
+// Builds the period-by-period off-plan timeline: Стройка → Handover → [Post-handover] → Далее.
+// Returns [{title, rows:[[label, value, opts]...]}], shared by the on-screen result and the PDF report.
+function offplanTimeline(r) {
+  const o = r.offplan;
+  const incomeLabel = r.isShort ? 'Получаю (NOI краткосрок)' : 'Получаю (NOI аренда)';
+  const periods = [];
+
+  periods.push({
+    title: `1. Стройка · 0–${fmt(o.months)} мес.`,
+    rows: [
+      ['Плачу (всего за период)', fmt(o.investedToHandover)+' AED', {}],
+      ['Получаю', '0 AED', {}],
+      ['Чистый поток', '−'+fmt(o.investedToHandover)+' AED', {bold:1, color:'var(--red)'}],
+    ]
+  });
+
+  periods.push({
+    title: `2. Handover · мес. ${fmt(o.months)}`,
+    rows: [
+      [`Плачу (${fmt(o.handoverPct,1)}% от цены)`, fmt(o.handoverPayment)+' AED', {}],
+      ['Оценка стоимости объекта', fmt(o.valueAtHandover)+' AED', {}],
+      ['Чистый поток', '−'+fmt(o.handoverPayment)+' AED', {bold:1, color:'var(--red)'}],
+    ]
+  });
+
+  let n = 3;
+  if (o.phpOn && o.phpMonths > 0) {
+    const covColor = o.coveragePct===null ? 'var(--green)' : (o.coveragePct>=100 ? 'var(--green)' : o.coveragePct>=70 ? 'var(--brass)' : 'var(--red)');
+    const remLabel = o.phpNetMonthly>=0 ? 'Излишек' : 'Доплата из своих средств';
+    const remSign = o.phpNetMonthly>=0 ? '+' : '';
+    periods.push({
+      title: `${n}. Post-handover · ${fmt(o.phpMonths)} мес.`,
+      rows: [
+        ['Плачу застройщику', fmt(o.devPayMonthly)+' AED/мес', {}],
+        [incomeLabel, fmt(o.noiMonthly)+' AED/мес', {}],
+        ['Чистый поток', remSign+fmt(o.phpNetMonthly)+' AED/мес', {bold:1, color: o.phpNetMonthly>=0?'var(--green)':'var(--red)'}],
+        ['Аренда покрывает рассрочку', o.coveragePct===null ? '—' : fmt(o.coveragePct,0)+'%', {color: covColor}],
+        [remLabel, remSign+fmt(o.phpNetMonthly)+' AED/мес', {indent:1, color: o.phpNetMonthly>=0?'var(--green)':'var(--red)'}],
+      ]
+    });
+    n++;
+  }
+
+  periods.push({
+    title: `${n}. Далее${(o.phpOn && o.phpMonths>0) ? ' · после окончания PHP' : ' · после handover'}`,
+    rows: [
+      ['Плачу застройщику', '0 AED/мес', {}],
+      [incomeLabel, fmt(o.noiMonthly)+' AED/мес', {}],
+      ['Чистый поток', fmt(r.cashFlow/12)+' AED/мес', {bold:1, color:'var(--green)'}],
+    ]
+  });
+
+  return periods;
+}
+
 function recalc() {
   sanitizeInputs();
+  updateHandoverPct();
   const r = calc();
   const yColor = r.netYield>=6 ? 'var(--green)' : r.netYield>=4.5 ? 'var(--brass)' : 'var(--red)';
   const heroColor = r.netYield<4.5 ? '#E8B59F' : '#E9D9A8';
@@ -366,7 +532,7 @@ function recalc() {
       + row('Платёж банку', fmt(r.monthlyPayment)+' AED/мес') : '')
   + `</div>
 
-  <div class="section"><div class="sec-title">Годовой денежный поток</div>`
+  <div class="section"><div class="sec-title">${r.isOff ? 'Операционный поток после handover (NOI)' : 'Годовой денежный поток'}</div>`
   + row(r.isShort ? `ADR ${fmt(num('adr'))} × 365 × ${num('occShort')}%` : `Аренда × ${num('occLong')}% заполняемость`, fmt(r.effRevenue)+' AED')
   + row('Service charge', '−'+fmt(r.serviceCharge)+' AED', {indent:1, color:'var(--red)'})
   + (r.isShort ? row(`Оператор ${num('operatorPct')}%`, '−'+fmt(r.operatorFee)+' AED', {indent:1, color:'var(--red)'})
@@ -376,26 +542,58 @@ function recalc() {
   + (r.isMort ? row('Платежи банку', '−'+fmt(r.debtService)+' AED', {indent:1, color:'var(--red)'}) : '')
   + row(r.isMort?'Чистый поток':'Чистый доход (NOI)', fmt(r.cashFlow)+' AED/год', {bold:1, color:yColor})
   + row('В месяц', fmt(r.cashFlow/12)+' AED')
-  + row('Окупаемость', isFinite(r.payback)?fmt(r.payback,1)+' лет':'—')
+  + (r.isOff ? '' : row('Окупаемость', isFinite(r.payback)?fmt(r.payback,1)+' лет':'—'))
   + `</div>`;
 
   if (r.isOff) {
-    html += `<div class="section"><div class="sec-title">Офф-план: до handover (${num('handoverMonths')} мес.)</div>`
-    + row(`Вложено (${num('paidPct')}% + сборы)`, fmt(r.investedToHandover)+' AED')
-    + row('Оценка на handover', fmt(r.valueAtHandover)+' AED')
-    + row('Бумажная прибыль', '+'+fmt(r.offplanGain)+' AED')
-    + row('ROI на вложенное', fmt(r.offplanROI,1)+'%', {bold:1, color:'var(--green)'})
-    + row('≈ годовых', fmt(r.offplanAnnual,1)+'%')
+    const o = r.offplan;
+
+    if (o.handoverPct < 0) {
+      html += `<div class="section" style="border-color:var(--red)"><div class="sec-title" style="color:var(--red)">⚠ Ошибка плана платежей</div>`
+      + `<div style="font-size:13px;color:var(--red)">Сумма «До handover» (${fmt(o.paidPct,1)}%)`
+      + (o.phpOn ? ` + «Post-handover» (${fmt(o.phpPct,1)}%)` : '')
+      + ` превышает 100%. Проверьте проценты в разделе «Офф-план: план платежей».</div></div>`;
+    }
+
+    html += `<div class="section"><div class="sec-title">Офф-план: ROI на handover (${fmt(o.months)} мес.)</div>`
+    + row(`Вложено до handover (${fmt(o.paidPct,1)}% + сборы)`, fmt(o.investedToHandover)+' AED')
+    + row(`Оценка на handover (рост ${fmt(o.growthPre,1)}%/год)`, fmt(o.valueAtHandover)+' AED')
+    + row('Бумажная прибыль', '+'+fmt(o.offplanGain)+' AED')
+    + row('ROI на вложенное', fmt(o.offplanROI,1)+'%', {bold:1, color:'var(--green)'})
+    + row('≈ годовых', fmt(o.offplanAnnual,1)+'%')
     + `</div>`;
+
+    html += `<div class="section"><div class="sec-title">Таймлайн</div>`;
+    offplanTimeline(r).forEach(p => {
+      html += `<div class="tl-period"><div class="tl-head">${p.title}</div>`
+        + p.rows.map(([l,v,opts]) => row(l,v,opts)).join('')
+        + `</div>`;
+    });
+    html += `</div>`;
   }
 
-  html += `<div class="section"><div class="sec-title">Горизонт 5 лет · рост ${num('growth')}%/год</div>`
-  + row('Стоимость через 5 лет', fmt(r.value5)+' AED')
-  + row('Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
-  + row(`Аренда за ${fmt(r.rentYears,1)} лет`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
-  + row('Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
-  + row('≈ годовых', fmt(r.annualized5,2)+'%')
-  + `</div>`;
+  if (r.isOff) {
+    const o = r.offplan;
+    html += `<div class="section"><div class="sec-title">Горизонт 5 лет</div>`
+    + `<div class="f-hint" style="margin-bottom:10px">Рост ${fmt(o.growthPre,1)}%/год до handover`
+    + (o.toHandoverYears < 5 ? `, ${fmt(o.growthPost,1)}%/год после` : ' · 5 лет наступят ещё до handover') + `</div>`
+    + row('Стоимость через 5 лет', fmt(r.value5)+' AED')
+    + row('Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
+    + (o.toHandoverYears < 5
+        ? row(`Чистый поток от аренды за ${fmt(r.rentYears,1)} лет (с учётом PHP)`, (o.rentalCashTotal>=0?'+':'')+fmt(o.rentalCashTotal)+' AED')
+        : row('Доход от аренды', '0 AED (handover ещё впереди)'))
+    + row('Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
+    + row('≈ годовых', fmt(r.annualized5,2)+'%')
+    + `</div>`;
+  } else {
+    html += `<div class="section"><div class="sec-title">Горизонт 5 лет · рост ${num('growth')}%/год</div>`
+    + row('Стоимость через 5 лет', fmt(r.value5)+' AED')
+    + row('Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
+    + row(`Аренда за ${fmt(r.rentYears,1)} лет`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
+    + row('Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
+    + row('≈ годовых', fmt(r.annualized5,2)+'%')
+    + `</div>`;
+  }
 
   document.getElementById('results').innerHTML = html;
 }
@@ -431,7 +629,7 @@ function buildReport() {
   + (r.furn>0 ? row('Меблировка', fmt(r.furn)+' AED', {indent:1}) : '')
   + row('Полная стоимость входа', fmt(r.entry)+' AED', {bold:1})
   + (r.isMort ? row('Собственные средства', fmt(r.cashInvested)+' AED', {bold:1, color:'var(--brass)'}) : '')
-  + `<h3>Годовой результат</h3>`
+  + `<h3>${r.isOff ? 'Операционный поток после handover (NOI)' : 'Годовой результат'}</h3>`
   + row(r.isShort ? `Выручка: ADR ${fmt(num('adr'))} × ${num('occShort')}% заполняемость` : `Аренда при ${num('occLong')}% заполняемости`, fmt(r.effRevenue)+' AED')
   + row('Операционные расходы', '−'+fmt(r.opex)+' AED', {indent:1, color:'var(--red)'})
   + (r.isMort ? row('Платежи банку', '−'+fmt(r.debtService)+' AED', {indent:1, color:'var(--red)'}) : '')
@@ -439,18 +637,42 @@ function buildReport() {
   + row('В месяц', fmt(r.cashFlow/12)+' AED');
 
   if (r.isOff) {
-    html += `<h3>До передачи ключей (${num('handoverMonths')} мес.)</h3>`
-    + row(`Вложено до handover (${num('paidPct')}% + сборы)`, fmt(r.investedToHandover)+' AED')
-    + row('Оценка стоимости на handover', fmt(r.valueAtHandover)+' AED')
-    + row('ROI на вложенные средства', `${fmt(r.offplanROI,1)}% (≈${fmt(r.offplanAnnual,1)}%/год)`, {bold:1, color:'var(--green)'});
+    const o = r.offplan;
+
+    if (o.handoverPct < 0) {
+      html += `<div class="rep-foot" style="color:var(--red);border-top:none;margin-top:8px">⚠ Сумма частей плана платежей превышает 100% — «На handover» получилось ${fmt(o.handoverPct,1)}%. Проверьте проценты перед использованием отчёта.</div>`;
+    }
+
+    html += `<h3>ROI на handover (${fmt(o.months)} мес.)</h3>`
+    + row(`Вложено до handover (${fmt(o.paidPct,1)}% + сборы)`, fmt(o.investedToHandover)+' AED')
+    + row(`Оценка стоимости на handover (рост ${fmt(o.growthPre,1)}%/год)`, fmt(o.valueAtHandover)+' AED')
+    + row('Бумажная прибыль', '+'+fmt(o.offplanGain)+' AED')
+    + row('ROI на вложенные средства', `${fmt(o.offplanROI,1)}% (≈${fmt(o.offplanAnnual,1)}%/год)`, {bold:1, color:'var(--green)'});
+
+    html += `<h3>Таймлайн по периодам</h3>`;
+    offplanTimeline(r).forEach(p => {
+      html += `<div style="font-size:11.5px;font-weight:800;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 2px">${p.title}</div>`
+        + p.rows.map(([l,v,opts]) => row(l,v,opts)).join('');
+    });
+
+    html += `<h3>Горизонт 5 лет</h3>`
+    + `<div style="font-size:12px;color:var(--sub);margin-bottom:4px">Рост ${fmt(o.growthPre,1)}%/год до handover`
+    + (o.toHandoverYears < 5 ? `, ${fmt(o.growthPost,1)}%/год после` : ' · 5 лет наступят ещё до handover') + `</div>`
+    + row('Прогноз стоимости', fmt(r.value5)+' AED')
+    + row('Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
+    + (o.toHandoverYears < 5
+        ? row(`Чистый поток от аренды за ${fmt(r.rentYears,1)} лет (с учётом PHP)`, (o.rentalCashTotal>=0?'+':'')+fmt(o.rentalCashTotal)+' AED')
+        : row('Доход от аренды', '0 AED (handover ещё впереди)'))
+    + row('Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}% годовых`, {bold:1, color:'var(--green)'});
+  } else {
+    html += `<h3>Горизонт 5 лет · рост ${num('growth')}%/год</h3>`
+    + row('Прогноз стоимости', fmt(r.value5)+' AED')
+    + row('Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
+    + row(`Доход от аренды (${fmt(r.rentYears,1)} лет)`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
+    + row('Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}% годовых`, {bold:1, color:'var(--green)'});
   }
 
-  html += `<h3>Горизонт 5 лет · рост ${num('growth')}%/год</h3>`
-  + row('Прогноз стоимости', fmt(r.value5)+' AED')
-  + row('Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
-  + row(`Доход от аренды (${fmt(r.rentYears,1)} лет)`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
-  + row('Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}% годовых`, {bold:1, color:'var(--green)'})
-  + `<div class="rep-foot">Расчёт носит оценочный характер и не является инвестиционной рекомендацией. Прогноз роста стоимости — допущение. Не учтены: DEWA-депозит, chiller, страхование. Подготовлено: Parklane UAE · ${today}</div>`;
+  html += `<div class="rep-foot">Расчёт носит оценочный характер и не является инвестиционной рекомендацией. Прогноз роста стоимости — допущение. Не учтены: DEWA-депозит, chiller, страхование. Подготовлено: Parklane UAE · ${today}</div>`;
 
   document.getElementById('report').innerHTML = html;
 }
