@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Калькулятор ROI · Dubai</title>
 
 <!-- PWA -->
@@ -24,11 +24,13 @@
     --green:#0E3B33; --brass:#B8862D; --red:#A6422F;
   }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Manrope',system-ui,sans-serif; padding:24px 16px 48px; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Manrope',system-ui,sans-serif;
+         padding: calc(24px + env(safe-area-inset-top)) 16px calc(48px + env(safe-area-inset-bottom)); }
   .wrap { max-width:980px; margin:0 auto; }
   header { display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
   .eyebrow { font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--sub); font-weight:700; }
   h1 { font-size:28px; font-weight:800; margin:4px 0 0; letter-spacing:-0.01em; }
+  .header-right { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
   .grid2 { display:block; }
   @media (min-width:880px) { .grid2 { display:grid; grid-template-columns:1fr 1.1fr; gap:20px; align-items:start; } }
   .section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 18px 10px; margin-bottom:16px; }
@@ -40,7 +42,8 @@
   .f-hint { font-size:12px; color:var(--sub); margin-top:4px; }
   .field { margin-bottom:14px; }
   .checkbox-row { display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:700; color:var(--ink); margin-bottom:14px; cursor:pointer; }
-  .checkbox-row input { width:16px; height:16px; accent-color:var(--green); }
+  .checkbox-row input { width:16px; height:16px; accent-color:var(--green); flex-shrink:0; }
+  .vat-check { font-size:12.5px; font-weight:600; margin-top:6px; margin-bottom:0; }
   .calc-row { display:flex; justify-content:space-between; align-items:baseline; padding:8px 10px; border-radius:8px; background:#F4F5F2; font-size:13px; margin-bottom:14px; }
   .calc-row .l { color:var(--sub); font-weight:600; }
   .calc-row .v { font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:14px; }
@@ -56,6 +59,9 @@
   .toggle { display:flex; background:#E8EAE6; border-radius:9px; padding:3px; margin-bottom:14px; }
   .toggle button { flex:1; padding:8px 6px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:700; background:transparent; color:var(--sub); transition:all .15s; }
   .toggle button.on { background:var(--green); color:#F2F5F2; }
+  .lang-toggle { display:flex; background:#E8EAE6; border-radius:9px; padding:3px; }
+  .lang-toggle button { padding:6px 14px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700; background:transparent; color:var(--sub); transition:all .15s; }
+  .lang-toggle button.on { background:var(--green); color:#F2F5F2; }
   .row { display:flex; justify-content:space-between; align-items:baseline; padding:7px 0; border-bottom:1px dashed var(--line); }
   .row .l { font-size:13.5px; color:var(--sub); }
   .row .v { font-family:'IBM Plex Mono',monospace; font-size:13.5px; font-weight:500; white-space:nowrap; }
@@ -70,7 +76,8 @@
   .btn.gray { background:#E8EAE6; color:var(--ink); }
   .hidden { display:none !important; }
   /* report */
-  #reportScreen { position:fixed; inset:0; background:#fff; overflow:auto; z-index:50; padding:24px 16px 60px; }
+  #reportScreen { position:fixed; inset:0; background:#fff; overflow:auto; z-index:50;
+                  padding: calc(24px + env(safe-area-inset-top)) 16px calc(60px + env(safe-area-inset-bottom)); }
   #report { max-width:680px; margin:0 auto; background:#fff; padding:28px 26px; color:var(--ink); }
   #report h2 { font-size:24px; font-weight:800; margin:4px 0 2px; }
   #report h3 { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--brass); margin:18px 0 4px; }
@@ -88,142 +95,165 @@
 <div class="wrap" id="app">
   <header>
     <div>
-      <div class="eyebrow">Dubai Real Estate</div>
-      <h1>Калькулятор ROI</h1>
+      <div class="eyebrow" data-i18n="eyebrow">Dubai Real Estate</div>
+      <h1 data-i18n="h1">Калькулятор ROI</h1>
     </div>
-    <button class="btn" onclick="openReport()">Сформировать отчёт →</button>
+    <div class="header-right">
+      <div class="lang-toggle">
+        <button id="btn-ru" class="on" onclick="setLang('ru')">RU</button>
+        <button id="btn-en" onclick="setLang('en')">EN</button>
+      </div>
+      <button class="btn" id="btn-report" data-i18n="btn_report" onclick="openReport()">Сформировать отчёт →</button>
+    </div>
   </header>
 
   <div class="grid2">
     <!-- ВВОД -->
     <div>
       <div class="section">
-        <div class="sec-title">Сценарий</div>
+        <div class="sec-title" data-i18n="sec_scenario">Сценарий</div>
         <div class="toggle" id="tg-prop">
-          <button data-v="ready" class="on" onclick="setMode('prop','ready')">Готовый</button>
-          <button data-v="offplan" onclick="setMode('prop','offplan')">Офф-план</button>
+          <button data-v="ready" class="on" data-i18n="mode_ready" onclick="setMode('prop','ready')">Готовый</button>
+          <button data-v="offplan" data-i18n="mode_offplan" onclick="setMode('prop','offplan')">Офф-план</button>
         </div>
         <div class="toggle" id="tg-fin">
-          <button data-v="cash" class="on" onclick="setMode('fin','cash')">Наличные</button>
-          <button data-v="mortgage" onclick="setMode('fin','mortgage')">Ипотека</button>
+          <button data-v="cash" class="on" data-i18n="mode_cash" onclick="setMode('fin','cash')">Наличные</button>
+          <button data-v="mortgage" data-i18n="mode_mortgage" onclick="setMode('fin','mortgage')">Ипотека</button>
         </div>
         <div class="toggle" id="tg-rent">
-          <button data-v="long" class="on" onclick="setMode('rent','long')">Долгосрок</button>
-          <button data-v="short" onclick="setMode('rent','short')">Краткосрок</button>
+          <button data-v="long" class="on" data-i18n="mode_long" onclick="setMode('rent','long')">Долгосрок</button>
+          <button data-v="short" data-i18n="mode_short" onclick="setMode('rent','short')">Краткосрок</button>
         </div>
       </div>
 
       <div class="section">
-        <div class="sec-title">Объект</div>
+        <div class="sec-title" data-i18n="sec_property">Объект</div>
         <div class="field">
-          <div class="f-label">Название (для отчёта)</div>
-          <input type="text" class="plain" id="projectName" placeholder="напр. Sobha Hartland II, 1BR">
+          <div class="f-label" data-i18n="lbl_name">Название (для отчёта)</div>
+          <input type="text" class="plain" id="projectName" data-i18n-ph="ph_name" placeholder="напр. Sobha Hartland II, 1BR">
         </div>
-        <div class="field"><div class="f-label">Цена объекта</div>
+        <div class="field">
+          <div class="f-label" data-i18n="lbl_price">Цена объекта</div>
           <div class="f-box"><input id="price" inputmode="decimal" value="1500000" oninput="recalc()"><span class="suffix">AED</span></div>
         </div>
         <div class="cols2">
-          <div class="field"><div class="f-label">Площадь</div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_area">Площадь</div>
             <div class="f-box"><input id="area" inputmode="decimal" value="800" oninput="recalc()"><span class="suffix">sqft</span></div>
           </div>
-          <div class="field"><div class="f-label">DLD сбор</div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_dld">DLD сбор</div>
             <div class="f-box"><input id="dldPct" inputmode="decimal" value="4" oninput="recalc()"><span class="suffix">%</span></div>
           </div>
         </div>
         <div class="cols2">
-          <div class="field"><div class="f-label">Комиссия агента</div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_comm">Комиссия агента</div>
             <div class="f-box"><input id="commPct" inputmode="decimal" value="2" oninput="recalc()"><span class="suffix">%</span></div>
-            <div class="f-hint">+5% VAT автоматически</div>
+            <label class="checkbox-row vat-check">
+              <input type="checkbox" id="vatEnabled" checked onchange="recalc()">
+              <span data-i18n="lbl_vat_check">VAT 5%</span>
+            </label>
           </div>
-          <div class="field"><div class="f-label">Меблировка</div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_furnishing">Меблировка</div>
             <div class="f-box"><input id="furnishing" inputmode="decimal" value="0" oninput="recalc()"><span class="suffix">AED</span></div>
           </div>
         </div>
       </div>
 
       <div class="section hidden" id="sec-offplan">
-        <div class="sec-title">Офф-план: план платежей</div>
+        <div class="sec-title" data-i18n="sec_offplan">Офф-план: план платежей</div>
         <div class="cols2">
-          <div class="field"><div class="f-label">До handover, мес.</div>
-            <div class="f-box"><input id="handoverMonths" inputmode="decimal" value="24" oninput="recalc()"><span class="suffix">мес.</span></div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_handoverMonths">До handover, мес.</div>
+            <div class="f-box"><input id="handoverMonths" inputmode="decimal" value="24" oninput="recalc()"><span class="suffix" data-i18n="months_unit">мес.</span></div>
           </div>
-          <div class="field"><div class="f-label">До handover, %</div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_paidPct">До handover, %</div>
             <div class="f-box"><input id="paidPct" inputmode="decimal" value="60" oninput="recalc()"><span class="suffix">%</span></div>
-            <div class="f-hint">платежи во время стройки</div>
+            <div class="f-hint" data-i18n="hint_paid">платежи во время стройки</div>
           </div>
         </div>
-
         <div class="cols2">
-          <div class="field"><div class="f-label">На handover, %</div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_handoverPct">На handover, %</div>
             <div class="f-box"><input id="handoverPct" inputmode="decimal" value="40" oninput="recalc()"><span class="suffix">%</span></div>
-            <div class="f-hint">платёж при передаче ключей</div>
+            <div class="f-hint" data-i18n="hint_handover">платёж при передаче ключей</div>
           </div>
-          <div class="field hidden" id="f-phpMonths"><div class="f-label">Срок post-handover</div>
-            <div class="f-box"><input id="phpMonths" inputmode="decimal" value="24" oninput="recalc()"><span class="suffix">мес.</span></div>
+          <div class="field hidden" id="f-phpMonths">
+            <div class="f-label" data-i18n="lbl_phpMonths">Срок post-handover</div>
+            <div class="f-box"><input id="phpMonths" inputmode="decimal" value="24" oninput="recalc()"><span class="suffix" data-i18n="months_unit">мес.</span></div>
           </div>
         </div>
-
-        <label class="checkbox-row"><input type="checkbox" id="phpEnabled" onchange="syncVisibility(); recalc()"> Post-handover план (рассрочка после передачи ключей)</label>
-
+        <label class="checkbox-row"><input type="checkbox" id="phpEnabled" onchange="syncVisibility(); recalc()"> <span data-i18n="lbl_phpEnabled">Post-handover план (рассрочка после передачи ключей)</span></label>
         <div class="calc-row" id="planCheckRow">
           <span class="l"><span id="planCheckLabel"></span><span class="hint" id="planCheckHint"></span></span>
           <span class="v" id="planCheckVal">—</span>
         </div>
-
         <div class="cols2">
-          <div class="field"><div class="f-label">Рост до handover</div>
-            <div class="f-box"><input id="growthPre" inputmode="decimal" value="8" oninput="recalc()"><span class="suffix">%/год</span></div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_growthPre">Рост до handover</div>
+            <div class="f-box"><input id="growthPre" inputmode="decimal" value="8" oninput="recalc()"><span class="suffix">%/<span data-i18n="year_unit">год</span></span></div>
           </div>
-          <div class="field"><div class="f-label">Рост после handover</div>
-            <div class="f-box"><input id="growthPost" inputmode="decimal" value="5" oninput="recalc()"><span class="suffix">%/год</span></div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_growthPost">Рост после handover</div>
+            <div class="f-box"><input id="growthPost" inputmode="decimal" value="5" oninput="recalc()"><span class="suffix">%/<span data-i18n="year_unit">год</span></span></div>
           </div>
         </div>
       </div>
 
       <div class="section hidden" id="sec-mortgage">
-        <div class="sec-title">Ипотека</div>
+        <div class="sec-title" data-i18n="sec_mortgage">Ипотека</div>
         <div class="cols3">
-          <div class="field"><div class="f-label">Взнос</div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_down">Взнос</div>
             <div class="f-box"><input id="downPct" inputmode="decimal" value="25" oninput="recalc()"><span class="suffix">%</span></div>
           </div>
-          <div class="field"><div class="f-label">Ставка</div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_rate">Ставка</div>
             <div class="f-box"><input id="ratePct" inputmode="decimal" value="4.5" oninput="recalc()"><span class="suffix">%</span></div>
           </div>
-          <div class="field"><div class="f-label">Срок</div>
-            <div class="f-box"><input id="termYears" inputmode="decimal" value="25" oninput="recalc()"><span class="suffix">лет</span></div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_term">Срок</div>
+            <div class="f-box"><input id="termYears" inputmode="decimal" value="25" oninput="recalc()"><span class="suffix" data-i18n="years_unit">лет</span></div>
           </div>
         </div>
       </div>
 
       <div class="section" id="sec-long">
-        <div class="sec-title">Долгосрочная аренда</div>
-        <div class="cols2">
-          <div class="field"><div class="f-label" id="rentLabel">Годовая аренда</div>
-            <div class="f-box"><input id="rent" inputmode="decimal" value="110000" oninput="recalc()"><span class="suffix">AED</span></div>
-          </div>
-          <div class="field"><div class="f-label">Заполняемость</div>
-            <div class="f-box"><input id="occLong" inputmode="decimal" value="95" oninput="recalc()"><span class="suffix">%</span></div>
-          </div>
+        <div class="sec-title" id="sec-long-title" data-i18n="sec_long">Долгосрочная аренда</div>
+        <div class="field">
+          <div class="f-label" id="rentLabel">Годовая аренда</div>
+          <div class="f-box"><input id="rent" inputmode="decimal" value="110000" oninput="recalc()"><span class="suffix">AED</span></div>
+        </div>
+        <div class="field" id="f-occ-long">
+          <div class="f-label" data-i18n="lbl_occ">Заполняемость</div>
+          <div class="f-box"><input id="occLong" inputmode="decimal" value="95" oninput="recalc()"><span class="suffix">%</span></div>
         </div>
       </div>
 
       <div class="section hidden" id="sec-short">
-        <div class="sec-title">Краткосрочная аренда</div>
+        <div class="sec-title" data-i18n="sec_short">Краткосрочная аренда</div>
         <div class="cols2">
-          <div class="field"><div class="f-label" id="adrLabel">ADR — ставка/ночь</div>
+          <div class="field">
+            <div class="f-label" id="adrLabel">ADR — ставка/ночь</div>
             <div class="f-box"><input id="adr" inputmode="decimal" value="550" oninput="recalc()"><span class="suffix">AED</span></div>
           </div>
-          <div class="field"><div class="f-label">Заполняемость</div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_occ">Заполняемость</div>
             <div class="f-box"><input id="occShort" inputmode="decimal" value="70" oninput="recalc()"><span class="suffix">%</span></div>
           </div>
         </div>
         <div class="cols2">
-          <div class="field"><div class="f-label">Оператор</div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_operator">Оператор</div>
             <div class="f-box"><input id="operatorPct" inputmode="decimal" value="18" oninput="recalc()"><span class="suffix">%</span></div>
-            <div class="f-hint">обычно 15–25%</div>
+            <div class="f-hint" data-i18n="hint_operator">обычно 15–25%</div>
           </div>
-          <div class="field"><div class="f-label">DEWA + интернет</div>
-            <div class="f-box"><input id="utilities" inputmode="decimal" value="12000" oninput="recalc()"><span class="suffix">AED/год</span></div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_utilities">DEWA + интернет</div>
+            <div class="f-box"><input id="utilities" inputmode="decimal" value="12000" oninput="recalc()"><span class="suffix" data-i18n="aed_year">AED/год</span></div>
           </div>
         </div>
       </div>
@@ -231,20 +261,24 @@
       <div class="section">
         <div class="sec-title" id="sec-opex-title">Ежегодные расходы и прогноз</div>
         <div class="cols2">
-          <div class="field"><div class="f-label">Service charge</div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_sc">Service charge</div>
             <div class="f-box"><input id="scRate" inputmode="decimal" value="18" oninput="recalc()"><span class="suffix">AED/sqft</span></div>
           </div>
-          <div class="field"><div class="f-label">Ремонт / резерв</div>
-            <div class="f-box"><input id="maintenance" inputmode="decimal" value="3000" oninput="recalc()"><span class="suffix">AED/год</span></div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_maint">Ремонт / резерв</div>
+            <div class="f-box"><input id="maintenance" inputmode="decimal" value="3000" oninput="recalc()"><span class="suffix" data-i18n="aed_year">AED/год</span></div>
           </div>
         </div>
         <div class="cols2">
-          <div class="field" id="f-mgmt"><div class="f-label">Управление</div>
+          <div class="field" id="f-mgmt">
+            <div class="f-label" data-i18n="lbl_mgmt">Управление</div>
             <div class="f-box"><input id="mgmtPct" inputmode="decimal" value="0" oninput="recalc()"><span class="suffix">%</span></div>
-            <div class="f-hint">0 — если сам</div>
+            <div class="f-hint" data-i18n="hint_mgmt">0 — если сам</div>
           </div>
-          <div class="field" id="f-growth"><div class="f-label">Рост цены</div>
-            <div class="f-box"><input id="growth" inputmode="decimal" value="5" oninput="recalc()"><span class="suffix">%/год</span></div>
+          <div class="field" id="f-growth">
+            <div class="f-label" data-i18n="lbl_growth">Рост цены</div>
+            <div class="f-box"><input id="growth" inputmode="decimal" value="5" oninput="recalc()"><span class="suffix">%/<span data-i18n="year_unit">год</span></span></div>
           </div>
         </div>
       </div>
@@ -258,13 +292,100 @@
 <!-- ОТЧЁТ -->
 <div id="reportScreen" class="hidden">
   <div class="repbar">
-    <button class="btn" id="pdfBtn" onclick="downloadPDF()">⬇ Скачать PDF</button>
-    <button class="btn gray" onclick="closeReport()">← Назад к расчёту</button>
+    <button class="btn" id="pdfBtn" data-i18n="btn_pdf" onclick="downloadPDF()">⬇ Скачать PDF</button>
+    <button class="btn gray" data-i18n="btn_back" onclick="closeReport()">← Назад к расчёту</button>
   </div>
   <div id="report"></div>
 </div>
 
 <script>
+// ─── Language ───────────────────────────────────────────────────────────────
+let LANG = localStorage.getItem('lang') || (navigator.language.startsWith('ru') ? 'ru' : 'en');
+
+const TR = {
+  ru: {
+    eyebrow:'Dubai Real Estate', h1:'Калькулятор ROI', btn_report:'Сформировать отчёт →',
+    sec_scenario:'Сценарий', mode_ready:'Готовый', mode_offplan:'Офф-план',
+    mode_cash:'Наличные', mode_mortgage:'Ипотека', mode_long:'Долгосрок', mode_short:'Краткосрок',
+    sec_property:'Объект', lbl_name:'Название (для отчёта)', ph_name:'напр. Sobha Hartland II, 1BR',
+    lbl_price:'Цена объекта', lbl_area:'Площадь', lbl_dld:'DLD сбор',
+    lbl_comm:'Комиссия агента', lbl_vat_check:'VAT 5%', lbl_furnishing:'Меблировка',
+    sec_offplan:'Офф-план: план платежей', lbl_handoverMonths:'До handover, мес.',
+    lbl_paidPct:'До handover, %', hint_paid:'платежи во время стройки',
+    lbl_handoverPct:'На handover, %', hint_handover:'платёж при передаче ключей',
+    lbl_phpMonths:'Срок post-handover',
+    lbl_phpEnabled:'Post-handover план (рассрочка после передачи ключей)',
+    lbl_growthPre:'Рост до handover', lbl_growthPost:'Рост после handover',
+    sec_mortgage:'Ипотека', lbl_down:'Взнос', lbl_rate:'Ставка', lbl_term:'Срок',
+    sec_long:'Долгосрочная аренда', lbl_rent:'Годовая аренда',
+    lbl_rent_off:'Ожидаемая аренда после handover', lbl_occ:'Заполняемость',
+    sec_short:'Краткосрочная аренда', lbl_adr:'ADR — ставка/ночь',
+    lbl_adr_off:'Ожидаемый ADR после handover',
+    lbl_operator:'Оператор', hint_operator:'обычно 15–25%', lbl_utilities:'DEWA + интернет',
+    sec_opex:'Ежегодные расходы и прогноз', sec_opex_off:'Ежегодные расходы и прогноз (после handover)',
+    lbl_sc:'Service charge', lbl_maint:'Ремонт / резерв',
+    lbl_mgmt:'Управление', hint_mgmt:'0 — если сам', lbl_growth:'Рост цены',
+    btn_pdf:'⬇ Скачать PDF', btn_back:'← Назад к расчёту',
+    pdf_loading:'Готовлю PDF…', pdf_error:'Не удалось создать PDF: ',
+    year_unit:'год', months_unit:'мес.', years_unit:'лет', aed_year:'AED/год', aed_month:'AED/мес',
+    pc_post:'Post-handover, %', pc_total:'Итого по плану, %',
+  },
+  en: {
+    eyebrow:'Dubai Real Estate', h1:'ROI Calculator', btn_report:'Generate Report →',
+    sec_scenario:'Scenario', mode_ready:'Ready', mode_offplan:'Off-plan',
+    mode_cash:'Cash', mode_mortgage:'Mortgage', mode_long:'Long-term', mode_short:'Short-term',
+    sec_property:'Property', lbl_name:'Name (for report)', ph_name:'e.g. Sobha Hartland II, 1BR',
+    lbl_price:'Property Price', lbl_area:'Area', lbl_dld:'DLD Fee',
+    lbl_comm:'Agent Commission', lbl_vat_check:'VAT 5%', lbl_furnishing:'Furnishing',
+    sec_offplan:'Off-plan: Payment Plan', lbl_handoverMonths:'Pre-handover, months',
+    lbl_paidPct:'Pre-handover, %', hint_paid:'payments during construction',
+    lbl_handoverPct:'On handover, %', hint_handover:'payment on key delivery',
+    lbl_phpMonths:'Post-handover period',
+    lbl_phpEnabled:'Post-handover plan (installments after handover)',
+    lbl_growthPre:'Pre-handover growth', lbl_growthPost:'Post-handover growth',
+    sec_mortgage:'Mortgage', lbl_down:'Down payment', lbl_rate:'Rate', lbl_term:'Term',
+    sec_long:'Long-term Rental', lbl_rent:'Annual Rent',
+    lbl_rent_off:'Expected rent post-handover', lbl_occ:'Occupancy',
+    sec_short:'Short-term Rental', lbl_adr:'ADR — nightly rate',
+    lbl_adr_off:'Expected ADR post-handover',
+    lbl_operator:'Operator', hint_operator:'typically 15–25%', lbl_utilities:'DEWA + internet',
+    sec_opex:'Annual Expenses & Forecast', sec_opex_off:'Annual Expenses & Forecast (post-handover)',
+    lbl_sc:'Service charge', lbl_maint:'Repairs / reserve',
+    lbl_mgmt:'Management', hint_mgmt:'0 — self-managed', lbl_growth:'Capital growth',
+    btn_pdf:'⬇ Download PDF', btn_back:'← Back to calculator',
+    pdf_loading:'Preparing PDF…', pdf_error:'Could not create PDF: ',
+    year_unit:'yr', months_unit:'months', years_unit:'yrs', aed_year:'AED/yr', aed_month:'AED/mo',
+    pc_post:'Post-handover, %', pc_total:'Payment plan total, %',
+  }
+};
+
+function t(key) {
+  return (TR[LANG] && TR[LANG][key]) || TR['ru'][key] || key;
+}
+
+function applyLang(lang) {
+  LANG = lang;
+  localStorage.setItem('lang', lang);
+  document.documentElement.lang = lang;
+  document.title = lang === 'en' ? 'ROI Calculator · Dubai' : 'Калькулятор ROI · Dubai';
+  document.getElementById('btn-ru').classList.toggle('on', lang === 'ru');
+  document.getElementById('btn-en').classList.toggle('on', lang === 'en');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = t(el.dataset.i18n);
+    if (v) el.textContent = v;
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const v = t(el.dataset.i18nPh);
+    if (v) el.placeholder = v;
+  });
+  syncVisibility();
+  recalc();
+  if (!document.getElementById('reportScreen').classList.contains('hidden')) buildReport();
+}
+
+function setLang(lang) { applyLang(lang); }
+
+// ─── State ───────────────────────────────────────────────────────────────────
 const M = { prop:'ready', fin:'cash', rent:'long' };
 
 const num = id => {
@@ -272,7 +393,8 @@ const num = id => {
   const n = parseFloat(String(el.value).replace(',', '.'));
   return isFinite(n) ? n : 0;
 };
-const fmt = (n, dec=0) => new Intl.NumberFormat('ru-RU', {maximumFractionDigits:dec, minimumFractionDigits:dec}).format(isFinite(n)?n:0);
+const fmt = (n, dec=0) => new Intl.NumberFormat(LANG === 'en' ? 'en-US' : 'ru-RU',
+  {maximumFractionDigits:dec, minimumFractionDigits:dec}).format(isFinite(n)?n:0);
 
 function setMode(key, val) {
   M[key] = val;
@@ -282,10 +404,10 @@ function setMode(key, val) {
 }
 
 function syncVisibility() {
-  const isOff = M.prop === 'offplan';
-  const isMort = M.fin === 'mortgage' && !isOff;
+  const isOff   = M.prop === 'offplan';
+  const isMort  = M.fin === 'mortgage' && !isOff;
   const isShort = M.rent === 'short';
-  const phpOn = isOff && document.getElementById('phpEnabled').checked;
+  const phpOn   = isOff && document.getElementById('phpEnabled').checked;
 
   document.getElementById('sec-offplan').classList.toggle('hidden', !isOff);
   document.getElementById('tg-fin').classList.toggle('hidden', isOff);
@@ -295,48 +417,55 @@ function syncVisibility() {
   document.getElementById('f-mgmt').classList.toggle('hidden', isShort);
   document.getElementById('f-growth').classList.toggle('hidden', isOff);
   document.getElementById('f-phpMonths').classList.toggle('hidden', !phpOn);
+  // долгосрок: заполняемость не нужна
+  document.getElementById('f-occ-long').classList.toggle('hidden', !isShort);
 
-  document.getElementById('rentLabel').textContent = isOff ? 'Ожидаемая аренда после handover' : 'Годовая аренда';
-  document.getElementById('adrLabel').textContent = isOff ? 'Ожидаемый ADR после handover' : 'ADR — ставка/ночь';
-  document.getElementById('sec-opex-title').textContent = isOff ? 'Ежегодные расходы и прогноз (после handover)' : 'Ежегодные расходы и прогноз';
+  document.getElementById('rentLabel').textContent    = isOff ? t('lbl_rent_off') : t('lbl_rent');
+  document.getElementById('adrLabel').textContent     = isOff ? t('lbl_adr_off')  : t('lbl_adr');
+  document.getElementById('sec-opex-title').textContent = isOff ? t('sec_opex_off') : t('sec_opex');
 
   updatePlanCheck();
 }
 
-// «До handover» и «На handover» — реальные платежи, которые вводит пользователь.
-// Без PHP их сумма должна быть 100%. С PHP включённым «Post-handover, %» — это остаток
-// (100% − До handover − На handover), который уходит в рассрочку после передачи ключей.
 function updatePlanCheck() {
-  const phpOn = document.getElementById('phpEnabled').checked;
-  const paid = num('paidPct');
-  const handover = num('handoverPct');
-  const rowEl = document.getElementById('planCheckRow');
+  const phpOn   = document.getElementById('phpEnabled').checked;
+  const paid    = num('paidPct');
+  const handover= num('handoverPct');
+  const rowEl   = document.getElementById('planCheckRow');
   const labelEl = document.getElementById('planCheckLabel');
-  const valEl = document.getElementById('planCheckVal');
-  const hintEl = document.getElementById('planCheckHint');
+  const valEl   = document.getElementById('planCheckVal');
+  const hintEl  = document.getElementById('planCheckHint');
 
   if (phpOn) {
     const post = 100 - paid - handover;
-    labelEl.textContent = 'Post-handover, %';
-    valEl.textContent = fmt(post, 1) + '%';
+    labelEl.textContent = t('pc_post');
+    valEl.textContent   = fmt(post, 1) + '%';
     if (post < 0) {
       rowEl.classList.add('err');
-      hintEl.textContent = `Сумма «До handover» (${fmt(paid,1)}%) + «На handover» (${fmt(handover,1)}%) превышает 100% на ${fmt(-post,1)} п.п. — для post-handover не остаётся места`;
+      hintEl.textContent = LANG === 'en'
+        ? `Pre-handover (${fmt(paid,1)}%) + On handover (${fmt(handover,1)}%) exceed 100% by ${fmt(-post,1)} p.p.`
+        : `Сумма «До handover» (${fmt(paid,1)}%) + «На handover» (${fmt(handover,1)}%) превышает 100% на ${fmt(-post,1)} п.п. — для post-handover не остаётся места`;
     } else {
       rowEl.classList.remove('err');
-      hintEl.textContent = `100% − ${fmt(paid,1)}% (до handover) − ${fmt(handover,1)}% (на handover)`;
+      hintEl.textContent = LANG === 'en'
+        ? `100% − ${fmt(paid,1)}% (pre) − ${fmt(handover,1)}% (on handover)`
+        : `100% − ${fmt(paid,1)}% (до handover) − ${fmt(handover,1)}% (на handover)`;
     }
     return post;
   } else {
     const total = paid + handover;
-    labelEl.textContent = 'Итого по плану, %';
-    valEl.textContent = fmt(total, 1) + '%';
+    labelEl.textContent = t('pc_total');
+    valEl.textContent   = fmt(total, 1) + '%';
     if (Math.abs(total - 100) > 0.001) {
       rowEl.classList.add('err');
-      hintEl.textContent = `«До handover» + «На handover» должны давать 100% (сейчас ${fmt(total,1)}%) — проверьте проценты`;
+      hintEl.textContent = LANG === 'en'
+        ? `Must total 100% (currently ${fmt(total,1)}%) — check percentages`
+        : `«До handover» + «На handover» должны давать 100% (сейчас ${fmt(total,1)}%) — проверьте проценты`;
     } else {
       rowEl.classList.remove('err');
-      hintEl.textContent = `«До handover» + «На handover» = 100%`;
+      hintEl.textContent = LANG === 'en'
+        ? `Pre + On handover = 100%`
+        : `«До handover» + «На handover» = 100%`;
     }
     return null;
   }
@@ -348,15 +477,12 @@ function sanitizeInputs() {
   });
 }
 
-// NPV of monthly cash flows at a given monthly rate.
 function npv(rate, flows) {
   let total = 0;
   for (let m = 0; m < flows.length; m++) total += flows[m] / Math.pow(1+rate, m);
   return total;
 }
 
-// Solves for the monthly rate where NPV = 0 via bisection. Returns null if the
-// cash flows never change sign (no IRR exists).
 function solveIRR(flows) {
   let lo = -0.99, hi = 1;
   let nLo = npv(lo, flows), nHi = npv(hi, flows);
@@ -369,11 +495,6 @@ function solveIRR(flows) {
   return (lo+hi)/2;
 }
 
-// Builds a 60-month cash-flow series for the off-plan investment (construction
-// payments spread evenly, lump sum at handover, net PHP flow during the
-// post-handover instalment period, sale at value5 at month 60) and returns the
-// annualised IRR — this captures the benefit of deferred payments that the
-// simple "total return / entry" ROI does not.
 function computeOffplanIRR(months, dealFees, pricePortionToHandover, handoverPayment, phpOn, phpMonths, devPayMonthly, noi, value5) {
   const horizon = 60;
   const monthsToHandover = Math.max(1, Math.round(months));
@@ -382,7 +503,7 @@ function computeOffplanIRR(months, dealFees, pricePortionToHandover, handoverPay
   const flows = new Array(horizon+1).fill(0);
   for (let m = 1; m <= horizon; m++) {
     let cf = 0;
-    if (m === 1) cf -= dealFees; // DLD/Oqood/комиссия — платятся при подписании, не растянуты
+    if (m === 1) cf -= dealFees;
     if (m <= monthsToHandover) cf -= constrMonthly;
     if (m === monthsToHandover) cf -= handoverPayment;
     if (m > monthsToHandover) {
@@ -397,100 +518,95 @@ function computeOffplanIRR(months, dealFees, pricePortionToHandover, handoverPay
 }
 
 function calc() {
-  const P = num('price');
-  const isOff = M.prop === 'offplan';
-  const isMort = M.fin === 'mortgage' && !isOff;
+  const P       = num('price');
+  const isOff   = M.prop === 'offplan';
+  const isMort  = M.fin === 'mortgage' && !isOff;
   const isShort = M.rent === 'short';
-  const phpOn = isOff && document.getElementById('phpEnabled').checked;
+  const vatEnabled = document.getElementById('vatEnabled').checked;
+  const phpOn   = isOff && document.getElementById('phpEnabled').checked;
 
-  const dld = P * (num('dldPct')/100) + 580;
+  const dld        = P * (num('dldPct')/100) + 580;
   const commission = P * (num('commPct')/100);
-  const vat = commission * 0.05;
-  const trustee = isOff ? 0 : (P >= 500000 ? 4200 : 2100);
-  const oqood = isOff ? 1050 : 0;
+  const vat        = vatEnabled ? commission * 0.05 : 0;
+  const trustee    = isOff ? 0 : (P >= 500000 ? 4200 : 2100);
+  const oqood      = isOff ? 1050 : 0;
 
-  const down = P * (num('downPct')/100);
-  const loan = isMort ? P - down : 0;
-  const mortgageReg = isMort ? loan*0.0025 + 290 : 0;
-  const bankFee = isMort ? loan*0.01 : 0;
-  const valuation = isMort ? 3150 : 0;
-  const i = num('ratePct')/100/12, nM = num('termYears')*12;
-  const monthlyPayment = (isMort && i>0 && nM>0) ? loan*i*Math.pow(1+i,nM)/(Math.pow(1+i,nM)-1) : 0;
-  const debtService = monthlyPayment*12;
+  const down          = P * (num('downPct')/100);
+  const loan          = isMort ? P - down : 0;
+  const mortgageReg   = isMort ? loan*0.0025 + 290 : 0;
+  const bankFee       = isMort ? loan*0.01 : 0;
+  const valuation     = isMort ? 3150 : 0;
+  const i             = num('ratePct')/100/12, nM = num('termYears')*12;
+  const monthlyPayment= (isMort && i>0 && nM>0) ? loan*i*Math.pow(1+i,nM)/(Math.pow(1+i,nM)-1) : 0;
+  const debtService   = monthlyPayment*12;
 
-  const dealCosts = dld + commission + vat + trustee + oqood + mortgageReg + bankFee + valuation;
-  const furn = num('furnishing');
-  const entry = P + dealCosts + furn;
-  const cashInvested = isMort ? down + dealCosts + furn : entry;
+  const dealCosts   = dld + commission + vat + trustee + oqood + mortgageReg + bankFee + valuation;
+  const furn        = num('furnishing');
+  const entry       = P + dealCosts + furn;
+  const cashInvested= isMort ? down + dealCosts + furn : entry;
 
-  // Revenue/opex represent the steady post-handover state for off-plan,
-  // and the current state for ready properties.
   let grossRevenue, effRevenue, operatorFee = 0, util = 0;
   if (isShort) {
     grossRevenue = num('adr')*365*(num('occShort')/100);
-    effRevenue = grossRevenue;
-    operatorFee = grossRevenue*(num('operatorPct')/100);
-    util = num('utilities');
+    effRevenue   = grossRevenue;
+    operatorFee  = grossRevenue*(num('operatorPct')/100);
+    util         = num('utilities');
   } else {
     grossRevenue = num('rent');
-    effRevenue = grossRevenue*(num('occLong')/100);
+    effRevenue   = grossRevenue; // долгосрок = 100%, без коэффициента заполняемости
   }
 
   const serviceCharge = num('area')*num('scRate');
-  const mgmt = isShort ? 0 : effRevenue*(num('mgmtPct')/100);
-  const maint = num('maintenance');
-  const opex = serviceCharge + mgmt + maint + operatorFee + util;
-  const noi = effRevenue - opex;
-  const cashFlow = noi - debtService;
+  const mgmt          = isShort ? 0 : effRevenue*(num('mgmtPct')/100);
+  const maint         = num('maintenance');
+  const opex          = serviceCharge + mgmt + maint + operatorFee + util;
+  const noi           = effRevenue - opex;
+  const cashFlow      = noi - debtService;
 
   const grossYield = P>0 ? grossRevenue/P*100 : 0;
-  const netYield = entry>0 ? noi/entry*100 : 0;
-  const coc = cashInvested>0 ? cashFlow/cashInvested*100 : 0;
-  const payback = cashFlow>0 ? cashInvested/cashFlow : Infinity;
+  const netYield   = entry>0 ? noi/entry*100 : 0;
+  const coc        = cashInvested>0 ? cashFlow/cashInvested*100 : 0;
+  const payback    = cashFlow>0 ? cashInvested/cashFlow : Infinity;
 
   let value5, rentYears, totalReturn5, annualized5, offplan = null;
 
   if (isOff) {
-    const months = num('handoverMonths');
-    const paidPct = num('paidPct');
-    const handoverPct = num('handoverPct');
-    const phpMonths = phpOn ? num('phpMonths') : 0;
-    const phpPctRaw = 100 - paidPct - handoverPct;
-    const phpPct = phpOn ? Math.max(0, phpPctRaw) : 0;
-    const planError = phpOn ? (phpPctRaw < -1e-9) : (Math.abs(paidPct + handoverPct - 100) > 0.001);
-    const growthPre = num('growthPre');
-    const growthPost = num('growthPost');
+    const months       = num('handoverMonths');
+    const paidPct      = num('paidPct');
+    const handoverPct  = num('handoverPct');
+    const phpMonths    = phpOn ? num('phpMonths') : 0;
+    const phpPctRaw    = 100 - paidPct - handoverPct;
+    const phpPct       = phpOn ? Math.max(0, phpPctRaw) : 0;
+    const planError    = phpOn ? (phpPctRaw < -1e-9) : (Math.abs(paidPct + handoverPct - 100) > 0.001);
+    const growthPre    = num('growthPre');
+    const growthPost   = num('growthPost');
 
     const investedToHandover = P*(paidPct/100) + dld + oqood + commission + vat;
-    const valueAtHandover = P*Math.pow(1+growthPre/100, months/12);
-    const offplanGain = valueAtHandover - P;
-    const offplanROI = investedToHandover>0 ? offplanGain/investedToHandover*100 : 0;
-    const offplanAnnual = months>0 ? offplanROI/(months/12) : 0;
-    const handoverPayment = P * (handoverPct/100);
+    const valueAtHandover    = P*Math.pow(1+growthPre/100, months/12);
+    const offplanGain        = valueAtHandover - P;
+    const offplanROI         = investedToHandover>0 ? offplanGain/investedToHandover*100 : 0;
+    const offplanAnnual      = months>0 ? offplanROI/(months/12) : 0;
+    const handoverPayment    = P * (handoverPct/100);
 
-    // Post-handover instalment to the developer, paid out of rental income
-    const devPayMonthly = (phpOn && phpMonths>0) ? P*(phpPct/100)/phpMonths : 0;
-    const noiMonthly = noi/12;
-    const phpNetMonthly = noiMonthly - devPayMonthly;
-    const coveragePct = devPayMonthly>0 ? (noiMonthly/devPayMonthly*100) : null;
+    const devPayMonthly  = (phpOn && phpMonths>0) ? P*(phpPct/100)/phpMonths : 0;
+    const noiMonthly     = noi/12;
+    const phpNetMonthly  = noiMonthly - devPayMonthly;
+    const coveragePct    = devPayMonthly>0 ? (noiMonthly/devPayMonthly*100) : null;
 
-    // 5-year horizon: no rent before handover. NOI here is gross rental income —
-    // developer instalments are a financing cash flow already reflected in "entry"
-    // (the full price), not a deduction from rental return.
     const toHandoverYears = months/12;
     let rentalCashTotal = 0;
     if (toHandoverYears < 5) {
-      value5 = valueAtHandover * Math.pow(1+growthPost/100, 5-toHandoverYears);
-      rentYears = 5 - toHandoverYears;
-      rentalCashTotal = noi*rentYears;
+      value5           = valueAtHandover * Math.pow(1+growthPost/100, 5-toHandoverYears);
+      rentYears        = 5 - toHandoverYears;
+      rentalCashTotal  = noi*rentYears;
     } else {
-      value5 = P*Math.pow(1+growthPre/100, 5);
+      value5    = P*Math.pow(1+growthPre/100, 5);
       rentYears = 0;
     }
     totalReturn5 = entry>0 ? ((value5-entry)+rentalCashTotal)/entry*100 : 0;
-    annualized5 = (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/5)-1)*100;
+    annualized5  = (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/5)-1)*100;
 
-    const dealFees = dld + oqood + commission + vat;
+    const dealFees             = dld + oqood + commission + vat;
     const pricePortionToHandover = P*(paidPct/100);
     const irr5 = computeOffplanIRR(months, dealFees, pricePortionToHandover, handoverPayment, phpOn, phpMonths, devPayMonthly, noi, value5);
 
@@ -499,15 +615,15 @@ function calc() {
       devPayMonthly, noiMonthly, phpNetMonthly, coveragePct,
       toHandoverYears, rentalCashTotal, irr5};
   } else {
-    const growth = num('growth');
-    value5 = P*Math.pow(1+growth/100, 5);
-    rentYears = 5;
-    const baseInvest = cashInvested;
-    totalReturn5 = baseInvest>0 ? (value5-P+cashFlow*rentYears)/baseInvest*100 : 0;
-    annualized5 = (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/5)-1)*100;
+    const growth    = num('growth');
+    value5          = P*Math.pow(1+growth/100, 5);
+    rentYears       = 5;
+    const baseInvest= cashInvested;
+    totalReturn5    = baseInvest>0 ? (value5-P+cashFlow*rentYears)/baseInvest*100 : 0;
+    annualized5     = (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/5)-1)*100;
   }
 
-  return {P,isOff,isMort,isShort,dld,commission,vat,trustee,oqood,down,loan,mortgageReg,bankFee,valuation,
+  return {P,isOff,isMort,isShort,vatEnabled,dld,commission,vat,trustee,oqood,down,loan,mortgageReg,bankFee,valuation,
     monthlyPayment,debtService,dealCosts,entry,cashInvested,grossRevenue,effRevenue,operatorFee,util,
     serviceCharge,mgmt,opex,noi,cashFlow,grossYield,netYield,coc,payback,
     value5,rentYears,totalReturn5,annualized5,furn,offplan};
@@ -516,55 +632,60 @@ function calc() {
 const row = (l,v,opts={}) =>
   `<div class="row ${opts.bold?'bold':''} ${opts.indent?'indent':''}"><span class="l">${l}</span><span class="v" style="color:${opts.color||'var(--ink)'}">${v}</span></div>`;
 
-// Builds the period-by-period off-plan timeline: Стройка → Handover → [Post-handover] → Далее.
-// Returns [{title, rows:[[label, value, opts]...]}], shared by the on-screen result and the PDF report.
 function offplanTimeline(r) {
   const o = r.offplan;
-  const incomeLabel = r.isShort ? 'Получаю (NOI краткосрок)' : 'Получаю (NOI аренда)';
+  const incomeLabel = r.isShort
+    ? (LANG==='en' ? 'Income (NOI short-term)' : 'Получаю (NOI краткосрок)')
+    : (LANG==='en' ? 'Income (NOI rental)'     : 'Получаю (NOI аренда)');
+  const aed_mo = LANG==='en' ? 'AED/mo' : 'AED/мес';
   const periods = [];
 
   periods.push({
-    title: `1. Стройка · 0–${fmt(o.months)} мес.`,
+    title: LANG==='en' ? `1. Construction · 0–${fmt(o.months)} months` : `1. Стройка · 0–${fmt(o.months)} мес.`,
     rows: [
-      ['Плачу (всего за период)', fmt(o.investedToHandover)+' AED', {}],
-      ['Получаю', '0 AED', {}],
-      ['Чистый поток', '−'+fmt(o.investedToHandover)+' AED', {bold:1, color:'var(--red)'}],
+      [LANG==='en' ? 'Paid (total for period)' : 'Плачу (всего за период)', fmt(o.investedToHandover)+' AED', {}],
+      [LANG==='en' ? 'Received' : 'Получаю', '0 AED', {}],
+      [LANG==='en' ? 'Net cash flow' : 'Чистый поток', '−'+fmt(o.investedToHandover)+' AED', {bold:1, color:'var(--red)'}],
     ]
   });
 
   periods.push({
-    title: `2. Handover · мес. ${fmt(o.months)}`,
+    title: LANG==='en' ? `2. Handover · month ${fmt(o.months)}` : `2. Handover · мес. ${fmt(o.months)}`,
     rows: [
-      [`Плачу (${fmt(o.handoverPct,1)}% от цены)`, fmt(o.handoverPayment)+' AED', {}],
-      ['Оценка стоимости объекта', fmt(o.valueAtHandover)+' AED', {}],
-      ['Чистый поток', '−'+fmt(o.handoverPayment)+' AED', {bold:1, color:'var(--red)'}],
+      [LANG==='en' ? `Paid (${fmt(o.handoverPct,1)}% of price)` : `Плачу (${fmt(o.handoverPct,1)}% от цены)`, fmt(o.handoverPayment)+' AED', {}],
+      [LANG==='en' ? 'Estimated property value' : 'Оценка стоимости объекта', fmt(o.valueAtHandover)+' AED', {}],
+      [LANG==='en' ? 'Net cash flow' : 'Чистый поток', '−'+fmt(o.handoverPayment)+' AED', {bold:1, color:'var(--red)'}],
     ]
   });
 
   let n = 3;
   if (o.phpOn && o.phpMonths > 0) {
     const covColor = o.coveragePct===null ? 'var(--green)' : (o.coveragePct>=100 ? 'var(--green)' : o.coveragePct>=70 ? 'var(--brass)' : 'var(--red)');
-    const remLabel = o.phpNetMonthly>=0 ? 'Излишек' : 'Доплата из своих средств';
+    const remLabel = o.phpNetMonthly>=0
+      ? (LANG==='en' ? 'Surplus' : 'Излишек')
+      : (LANG==='en' ? 'Out-of-pocket top-up' : 'Доплата из своих средств');
     const remSign = o.phpNetMonthly>=0 ? '+' : '';
     periods.push({
-      title: `${n}. Post-handover · ${fmt(o.phpMonths)} мес.`,
+      title: LANG==='en' ? `${n}. Post-handover · ${fmt(o.phpMonths)} months` : `${n}. Post-handover · ${fmt(o.phpMonths)} мес.`,
       rows: [
-        ['Плачу застройщику', fmt(o.devPayMonthly)+' AED/мес', {}],
-        [incomeLabel, fmt(o.noiMonthly)+' AED/мес', {}],
-        ['Чистый поток', remSign+fmt(o.phpNetMonthly)+' AED/мес', {bold:1, color: o.phpNetMonthly>=0?'var(--green)':'var(--red)'}],
-        ['Аренда покрывает рассрочку', o.coveragePct===null ? '—' : fmt(o.coveragePct,0)+'%', {color: covColor}],
-        [remLabel, remSign+fmt(o.phpNetMonthly)+' AED/мес', {indent:1, color: o.phpNetMonthly>=0?'var(--green)':'var(--red)'}],
+        [LANG==='en' ? 'Developer payment' : 'Плачу застройщику', fmt(o.devPayMonthly)+' '+aed_mo, {}],
+        [incomeLabel, fmt(o.noiMonthly)+' '+aed_mo, {}],
+        [LANG==='en' ? 'Net cash flow' : 'Чистый поток', remSign+fmt(o.phpNetMonthly)+' '+aed_mo, {bold:1, color: o.phpNetMonthly>=0?'var(--green)':'var(--red)'}],
+        [LANG==='en' ? 'Rent covers installment' : 'Аренда покрывает рассрочку', o.coveragePct===null ? '—' : fmt(o.coveragePct,0)+'%', {color: covColor}],
+        [remLabel, remSign+fmt(o.phpNetMonthly)+' '+aed_mo, {indent:1, color: o.phpNetMonthly>=0?'var(--green)':'var(--red)'}],
       ]
     });
     n++;
   }
 
   periods.push({
-    title: `${n}. Далее${(o.phpOn && o.phpMonths>0) ? ' · после окончания PHP' : ' · после handover'}`,
+    title: LANG==='en'
+      ? `${n}. Ongoing${(o.phpOn && o.phpMonths>0) ? ' · after PHP end' : ' · post-handover'}`
+      : `${n}. Далее${(o.phpOn && o.phpMonths>0) ? ' · после окончания PHP' : ' · после handover'}`,
     rows: [
-      ['Плачу застройщику', '0 AED/мес', {}],
-      [incomeLabel, fmt(o.noiMonthly)+' AED/мес', {}],
-      ['Чистый поток', fmt(r.cashFlow/12)+' AED/мес', {bold:1, color:'var(--green)'}],
+      [LANG==='en' ? 'Developer payment' : 'Плачу застройщику', LANG==='en' ? 'AED 0/mo' : '0 AED/мес', {}],
+      [incomeLabel, fmt(o.noiMonthly)+' '+aed_mo, {}],
+      [LANG==='en' ? 'Net cash flow' : 'Чистый поток', fmt(r.cashFlow/12)+' '+aed_mo, {bold:1, color:'var(--green)'}],
     ]
   });
 
@@ -575,116 +696,151 @@ function recalc() {
   sanitizeInputs();
   updatePlanCheck();
   const r = calc();
-  const yColor = r.netYield>=6 ? 'var(--green)' : r.netYield>=4.5 ? 'var(--brass)' : 'var(--red)';
+  const yColor    = r.netYield>=6 ? 'var(--green)' : r.netYield>=4.5 ? 'var(--brass)' : 'var(--red)';
   const heroColor = r.netYield<4.5 ? '#E8B59F' : '#E9D9A8';
+  const EN = LANG === 'en';
+  const aed_mo = EN ? 'AED/mo' : 'AED/мес';
+
+  const commLabel = r.vatEnabled
+    ? (EN ? `Commission ${num('commPct')}% + VAT 5%` : `Комиссия ${num('commPct')}% + VAT 5%`)
+    : (EN ? `Commission ${num('commPct')}%`          : `Комиссия ${num('commPct')}%`);
+
+  let revLabel;
+  if (r.isShort) {
+    revLabel = EN
+      ? `ADR ${fmt(num('adr'))} × 365 × ${num('occShort')}%`
+      : `ADR ${fmt(num('adr'))} × 365 × ${num('occShort')}%`;
+  } else {
+    revLabel = EN ? 'Annual rent' : 'Годовая аренда';
+  }
 
   let html = `
   <div class="hero">
     <div>
-      <div class="kl">Чистая доходность</div>
+      <div class="kl">${EN ? 'Net Yield' : 'Чистая доходность'}</div>
       <div class="kv" style="color:${heroColor}">${fmt(r.netYield,2)}%</div>
-      <div class="kd">NOI / полная стоимость входа</div>
+      <div class="kd">${EN ? 'NOI / total entry cost' : 'NOI / полная стоимость входа'}</div>
     </div>
     <div>
-      <div class="kl">${r.isMort?'Cash-on-cash':'Валовая доходность'}</div>
+      <div class="kl">${r.isMort ? 'Cash-on-cash' : (EN ? 'Gross Yield' : 'Валовая доходность')}</div>
       <div class="kv">${fmt(r.isMort?r.coc:r.grossYield,2)}%</div>
-      <div class="kd">${r.isMort?'поток / собственные средства':'выручка / цена объекта'}</div>
+      <div class="kd">${r.isMort ? (EN ? 'cash flow / equity' : 'поток / собственные средства') : (EN ? 'revenue / property price' : 'выручка / цена объекта')}</div>
     </div>
   </div>
 
-  <div class="section"><div class="sec-title">Стоимость входа</div>`
-  + row('Цена объекта', fmt(r.P)+' AED')
-  + row(`DLD ${num('dldPct')}% + 580 AED`, fmt(r.dld)+' AED', {indent:1})
-  + row(`Комиссия ${num('commPct')}% + VAT 5%`, fmt(r.commission+r.vat)+' AED', {indent:1})
-  + (r.isOff ? row('Oqood регистрация', fmt(r.oqood)+' AED', {indent:1}) : row('Trustee office', fmt(r.trustee)+' AED', {indent:1}))
-  + (r.isMort ? row('Регистрация ипотеки 0,25%', fmt(r.mortgageReg)+' AED', {indent:1}) + row('Банк 1% + оценка', fmt(r.bankFee+r.valuation)+' AED', {indent:1}) : '')
-  + (r.furn>0 ? row('Меблировка', fmt(r.furn)+' AED', {indent:1}) : '')
-  + row('Итого вход', fmt(r.entry)+' AED', {bold:1})
-  + (r.isMort ? row(`Кредит (${fmt(100-num('downPct'))}%)`, fmt(r.loan)+' AED')
-      + row('Собственные средства', fmt(r.cashInvested)+' AED', {bold:1, color:'var(--brass)'})
-      + row('Платёж банку', fmt(r.monthlyPayment)+' AED/мес') : '')
+  <div class="section"><div class="sec-title">${EN ? 'Entry Cost' : 'Стоимость входа'}</div>`
+  + row(EN ? 'Property price' : 'Цена объекта', fmt(r.P)+' AED')
+  + row(`DLD ${num('dldPct')}% + ${EN ? 'AED 580' : '580 AED'}`, fmt(r.dld)+' AED', {indent:1})
+  + row(commLabel, fmt(r.commission+r.vat)+' AED', {indent:1})
+  + (r.isOff ? row(EN ? 'Oqood registration' : 'Oqood регистрация', fmt(r.oqood)+' AED', {indent:1})
+             : row('Trustee office', fmt(r.trustee)+' AED', {indent:1}))
+  + (r.isMort ? row(EN ? 'Mortgage reg. 0.25%' : 'Регистрация ипотеки 0,25%', fmt(r.mortgageReg)+' AED', {indent:1})
+              + row(EN ? 'Bank 1% + valuation' : 'Банк 1% + оценка', fmt(r.bankFee+r.valuation)+' AED', {indent:1}) : '')
+  + (r.furn>0 ? row(EN ? 'Furnishing' : 'Меблировка', fmt(r.furn)+' AED', {indent:1}) : '')
+  + row(EN ? 'Total entry cost' : 'Итого вход', fmt(r.entry)+' AED', {bold:1})
+  + (r.isMort ? row(EN ? `Loan (${fmt(100-num('downPct'))}%)` : `Кредит (${fmt(100-num('downPct'))}%)`, fmt(r.loan)+' AED')
+      + row(EN ? 'Equity invested' : 'Собственные средства', fmt(r.cashInvested)+' AED', {bold:1, color:'var(--brass)'})
+      + row(EN ? 'Monthly payment' : 'Платёж банку', fmt(r.monthlyPayment)+' '+aed_mo) : '')
   + `</div>
 
-  <div class="section"><div class="sec-title">${r.isOff ? 'Операционный поток после handover (NOI)' : 'Годовой денежный поток'}</div>`
-  + row(r.isShort ? `ADR ${fmt(num('adr'))} × 365 × ${num('occShort')}%` : `Аренда × ${num('occLong')}% заполняемость`, fmt(r.effRevenue)+' AED')
-  + row('Service charge', '−'+fmt(r.serviceCharge)+' AED', {indent:1, color:'var(--red)'})
-  + (r.isShort ? row(`Оператор ${num('operatorPct')}%`, '−'+fmt(r.operatorFee)+' AED', {indent:1, color:'var(--red)'})
-      + row('DEWA + интернет', '−'+fmt(r.util)+' AED', {indent:1, color:'var(--red)'}) : '')
-  + (r.mgmt>0 ? row('Управление', '−'+fmt(r.mgmt)+' AED', {indent:1, color:'var(--red)'}) : '')
-  + row('Ремонт / резерв', '−'+fmt(num('maintenance'))+' AED', {indent:1, color:'var(--red)'})
-  + (r.isMort ? row('Платежи банку', '−'+fmt(r.debtService)+' AED', {indent:1, color:'var(--red)'}) : '')
-  + row(r.isMort?'Чистый поток':'Чистый доход (NOI)', fmt(r.cashFlow)+' AED/год', {bold:1, color:yColor})
-  + row('В месяц', fmt(r.cashFlow/12)+' AED')
-  + (r.isOff ? '' : row('Окупаемость', isFinite(r.payback)?fmt(r.payback,1)+' лет':'—'))
+  <div class="section"><div class="sec-title">${r.isOff ? (EN ? 'Operating Cash Flow post-handover (NOI)' : 'Операционный поток после handover (NOI)') : (EN ? 'Annual Cash Flow' : 'Годовой денежный поток')}</div>`
+  + row(revLabel, fmt(r.effRevenue)+' AED')
+  + row(EN ? 'Service charge' : 'Service charge', '−'+fmt(r.serviceCharge)+' AED', {indent:1, color:'var(--red)'})
+  + (r.isShort ? row(EN ? `Operator ${num('operatorPct')}%` : `Оператор ${num('operatorPct')}%`, '−'+fmt(r.operatorFee)+' AED', {indent:1, color:'var(--red)'})
+               + row(EN ? 'DEWA + internet' : 'DEWA + интернет', '−'+fmt(r.util)+' AED', {indent:1, color:'var(--red)'}) : '')
+  + (r.mgmt>0 ? row(EN ? 'Management' : 'Управление', '−'+fmt(r.mgmt)+' AED', {indent:1, color:'var(--red)'}) : '')
+  + row(EN ? 'Repairs / reserve' : 'Ремонт / резерв', '−'+fmt(num('maintenance'))+' AED', {indent:1, color:'var(--red)'})
+  + (r.isMort ? row(EN ? 'Debt service' : 'Платежи банку', '−'+fmt(r.debtService)+' AED', {indent:1, color:'var(--red)'}) : '')
+  + row(r.isMort ? (EN ? 'Net cash flow' : 'Чистый поток') : (EN ? 'Net operating income (NOI)' : 'Чистый доход (NOI)'), fmt(r.cashFlow)+' AED/'+t('year_unit'), {bold:1, color:yColor})
+  + row(EN ? 'Per month' : 'В месяц', fmt(r.cashFlow/12)+' '+aed_mo)
+  + (r.isOff ? '' : row(EN ? 'Payback period' : 'Окупаемость', isFinite(r.payback)?fmt(r.payback,1)+' '+(EN?'yrs':'лет'):'—'))
   + `</div>`;
 
   if (r.isOff) {
     const o = r.offplan;
 
     if (o.planError) {
-      html += `<div class="section" style="border-color:var(--red)"><div class="sec-title" style="color:var(--red)">⚠ Ошибка плана платежей</div>`
-      + `<div style="font-size:13px;color:var(--red)">`
-      + (o.phpOn
-          ? `Сумма «До handover» (${fmt(o.paidPct,1)}%) + «На handover» (${fmt(o.handoverPct,1)}%) превышает 100% — для post-handover не остаётся места.`
-          : `Сумма «До handover» (${fmt(o.paidPct,1)}%) + «На handover» (${fmt(o.handoverPct,1)}%) должна быть 100%, сейчас ${fmt(o.paidPct+o.handoverPct,1)}%.`)
-      + ` Проверьте проценты в разделе «Офф-план: план платежей».</div></div>`;
+      html += `<div class="section" style="border-color:var(--red)"><div class="sec-title" style="color:var(--red)">⚠ ${EN ? 'Payment Plan Error' : 'Ошибка плана платежей'}</div>`
+        + `<div style="font-size:13px;color:var(--red)">`
+        + (o.phpOn
+          ? (EN ? `Pre-handover (${fmt(o.paidPct,1)}%) + On handover (${fmt(o.handoverPct,1)}%) exceed 100% — no room for post-handover.`
+                : `Сумма «До handover» (${fmt(o.paidPct,1)}%) + «На handover» (${fmt(o.handoverPct,1)}%) превышает 100% — для post-handover не остаётся места.`)
+          : (EN ? `Pre-handover (${fmt(o.paidPct,1)}%) + On handover (${fmt(o.handoverPct,1)}%) must total 100%, currently ${fmt(o.paidPct+o.handoverPct,1)}%.`
+                : `Сумма «До handover» (${fmt(o.paidPct,1)}%) + «На handover» (${fmt(o.handoverPct,1)}%) должна быть 100%, сейчас ${fmt(o.paidPct+o.handoverPct,1)}%.`))
+        + (EN ? ' Check percentages in the Off-plan section.' : ' Проверьте проценты в разделе «Офф-план: план платежей».')
+        + `</div></div>`;
     }
 
-    html += `<div class="section"><div class="sec-title">Офф-план: ROI на handover (${fmt(o.months)} мес.)</div>`
-    + row(`Вложено до handover (${fmt(o.paidPct,1)}% + сборы)`, fmt(o.investedToHandover)+' AED')
-    + row(`Оценка на handover (рост ${fmt(o.growthPre,1)}%/год)`, fmt(o.valueAtHandover)+' AED')
-    + row('Бумажная прибыль', '+'+fmt(o.offplanGain)+' AED')
-    + row('ROI на вложенное', fmt(o.offplanROI,1)+'%', {bold:1, color:'var(--green)'})
-    + row('≈ годовых', fmt(o.offplanAnnual,1)+'%')
+    html += `<div class="section"><div class="sec-title">${EN ? `Off-plan: ROI at handover (${fmt(o.months)} months)` : `Офф-план: ROI на handover (${fmt(o.months)} мес.)`}</div>`
+    + row(EN ? `Invested pre-handover (${fmt(o.paidPct,1)}% + fees)` : `Вложено до handover (${fmt(o.paidPct,1)}% + сборы)`, fmt(o.investedToHandover)+' AED')
+    + row(EN ? `Est. value at handover (${fmt(o.growthPre,1)}%/yr growth)` : `Оценка на handover (рост ${fmt(o.growthPre,1)}%/год)`, fmt(o.valueAtHandover)+' AED')
+    + row(EN ? 'Paper profit' : 'Бумажная прибыль', '+'+fmt(o.offplanGain)+' AED')
+    + row(EN ? 'ROI on invested capital' : 'ROI на вложенное', fmt(o.offplanROI,1)+'%', {bold:1, color:'var(--green)'})
+    + row(EN ? '≈ annualized' : '≈ годовых', fmt(o.offplanAnnual,1)+'%')
     + `</div>`;
 
-    html += `<div class="section"><div class="sec-title">Таймлайн</div>`;
+    html += `<div class="section"><div class="sec-title">${EN ? 'Timeline' : 'Таймлайн'}</div>`;
     offplanTimeline(r).forEach(p => {
       html += `<div class="tl-period"><div class="tl-head">${p.title}</div>`
         + p.rows.map(([l,v,opts]) => row(l,v,opts)).join('')
         + `</div>`;
     });
     html += `</div>`;
-  }
 
-  if (r.isOff) {
-    const o = r.offplan;
-    html += `<div class="section"><div class="sec-title">Горизонт 5 лет</div>`
-    + `<div class="f-hint" style="margin-bottom:10px">Рост ${fmt(o.growthPre,1)}%/год до handover`
-    + (o.toHandoverYears < 5 ? `, ${fmt(o.growthPost,1)}%/год после` : ' · 5 лет наступят ещё до handover') + `</div>`
-    + row('Стоимость через 5 лет', fmt(r.value5)+' AED')
-    + row('Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
+    html += `<div class="section"><div class="sec-title">${EN ? '5-Year Horizon' : 'Горизонт 5 лет'}</div>`
+    + `<div class="f-hint" style="margin-bottom:10px">${EN ? `Growth ${fmt(o.growthPre,1)}%/yr pre-handover` : `Рост ${fmt(o.growthPre,1)}%/год до handover`}`
     + (o.toHandoverYears < 5
-        ? row(`Чистый арендный доход за ${fmt(r.rentYears,1)} лет`, '+'+fmt(o.rentalCashTotal)+' AED')
-        : row('Доход от аренды', '0 AED (handover ещё впереди)'))
-    + row('Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
-    + row('≈ годовых', fmt(r.annualized5,2)+'%')
-    + row('IRR — с учётом отложенных платежей', o.irr5===null ? '—' : fmt(o.irr5,1)+'%', {bold:1, color:'var(--green)'})
+        ? (EN ? `, ${fmt(o.growthPost,1)}%/yr post` : `, ${fmt(o.growthPost,1)}%/год после`)
+        : (EN ? ' · handover beyond 5-yr mark' : ' · 5 лет наступят ещё до handover')) + `</div>`
+    + row(EN ? 'Value in 5 years' : 'Стоимость через 5 лет', fmt(r.value5)+' AED')
+    + row(EN ? 'Capital gain' : 'Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
+    + (o.toHandoverYears < 5
+        ? row(EN ? `Net rental income (${fmt(r.rentYears,1)} yrs)` : `Чистый арендный доход за ${fmt(r.rentYears,1)} лет`, '+'+fmt(o.rentalCashTotal)+' AED')
+        : row(EN ? 'Rental income' : 'Доход от аренды', EN ? 'AED 0 (handover pending)' : '0 AED (handover ещё впереди)'))
+    + row(EN ? 'Total ROI' : 'Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
+    + row(EN ? '≈ annualized' : '≈ годовых', fmt(r.annualized5,2)+'%')
+    + row(EN ? 'IRR — accounting for deferred payments' : 'IRR — с учётом отложенных платежей', o.irr5===null ? '—' : fmt(o.irr5,1)+'%', {bold:1, color:'var(--green)'})
     + `</div>`;
   } else {
-    html += `<div class="section"><div class="sec-title">Горизонт 5 лет · рост ${num('growth')}%/год</div>`
-    + row('Стоимость через 5 лет', fmt(r.value5)+' AED')
-    + row('Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
-    + row(`Аренда за ${fmt(r.rentYears,1)} лет`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
-    + row('Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
-    + row('≈ годовых', fmt(r.annualized5,2)+'%')
+    html += `<div class="section"><div class="sec-title">${EN ? `5-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт 5 лет · рост ${num('growth')}%/год`}</div>`
+    + row(EN ? 'Value in 5 years' : 'Стоимость через 5 лет', fmt(r.value5)+' AED')
+    + row(EN ? 'Capital gain' : 'Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
+    + row(EN ? `Rental income (${fmt(r.rentYears,1)} yrs)` : `Аренда за ${fmt(r.rentYears,1)} лет`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
+    + row(EN ? 'Total ROI' : 'Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
+    + row(EN ? '≈ annualized' : '≈ годовых', fmt(r.annualized5,2)+'%')
     + `</div>`;
   }
 
   document.getElementById('results').innerHTML = html;
 }
 
-// ---------- ОТЧЁТ ----------
+// ─── Report ──────────────────────────────────────────────────────────────────
 function buildReport() {
-  const r = calc();
-  const name = document.getElementById('projectName').value || 'Объект недвижимости';
-  const today = new Date().toLocaleDateString('ru-RU');
+  const r     = calc();
+  const EN    = LANG === 'en';
+  const name  = document.getElementById('projectName').value || (EN ? 'Property' : 'Объект недвижимости');
+  const today = new Date().toLocaleDateString(LANG === 'en' ? 'en-GB' : 'ru-RU');
+  const aed_mo = EN ? 'AED/mo' : 'AED/мес';
+
   const scenario = [
-    r.isOff ? 'Офф-план' : 'Готовый объект',
-    r.isMort ? `Ипотека, взнос ${num('downPct')}%` : 'Покупка за наличные',
-    r.isShort ? 'Краткосрочная аренда' : 'Долгосрочная аренда',
+    r.isOff ? (EN ? 'Off-plan' : 'Офф-план') : (EN ? 'Ready property' : 'Готовый объект'),
+    r.isMort ? (EN ? `Mortgage, ${num('downPct')}% down` : `Ипотека, взнос ${num('downPct')}%`) : (EN ? 'Cash purchase' : 'Покупка за наличные'),
+    r.isShort ? (EN ? 'Short-term rental' : 'Краткосрочная аренда') : (EN ? 'Long-term rental' : 'Долгосрочная аренда'),
     fmt(num('area')) + ' sqft'
   ].join(' · ');
+
+  const commLabel = r.vatEnabled
+    ? (EN ? 'Commission + VAT' : 'Комиссия + VAT')
+    : (EN ? 'Commission' : 'Комиссия');
+
+  let revLabel;
+  if (r.isShort) {
+    revLabel = EN
+      ? `Revenue: ADR ${fmt(num('adr'))} × ${num('occShort')}% occupancy`
+      : `Выручка: ADR ${fmt(num('adr'))} × ${num('occShort')}% заполняемость`;
+  } else {
+    revLabel = EN ? 'Annual rent' : 'Годовая аренда';
+  }
 
   let html = `
   <div class="rep-head">
@@ -693,65 +849,76 @@ function buildReport() {
     <div style="font-size:13px;color:var(--sub)">${scenario}</div>
   </div>
   <div class="kpis">
-    <div class="kpi"><div class="l">Чистая доходность</div><div class="v">${fmt(r.netYield,2)}%</div></div>
-    <div class="kpi"><div class="l">${r.isMort?'Cash-on-cash':'Валовая доходность'}</div><div class="v">${fmt(r.isMort?r.coc:r.grossYield,2)}%</div></div>
-    <div class="kpi"><div class="l">ROI за 5 лет</div><div class="v">${fmt(r.totalReturn5,1)}%</div></div>
+    <div class="kpi"><div class="l">${EN ? 'Net Yield' : 'Чистая доходность'}</div><div class="v">${fmt(r.netYield,2)}%</div></div>
+    <div class="kpi"><div class="l">${r.isMort ? 'Cash-on-cash' : (EN ? 'Gross Yield' : 'Валовая доходность')}</div><div class="v">${fmt(r.isMort?r.coc:r.grossYield,2)}%</div></div>
+    <div class="kpi"><div class="l">${EN ? '5-yr ROI' : 'ROI за 5 лет'}</div><div class="v">${fmt(r.totalReturn5,1)}%</div></div>
   </div>
-  <h3>Вход в сделку</h3>`
-  + row('Цена объекта', fmt(r.P)+' AED')
-  + row('DLD + регистрация', fmt(r.dld+r.trustee+r.oqood)+' AED', {indent:1})
-  + row('Комиссия + VAT', fmt(r.commission+r.vat)+' AED', {indent:1})
-  + (r.isMort ? row('Расходы по ипотеке', fmt(r.mortgageReg+r.bankFee+r.valuation)+' AED', {indent:1}) : '')
-  + (r.furn>0 ? row('Меблировка', fmt(r.furn)+' AED', {indent:1}) : '')
-  + row('Полная стоимость входа', fmt(r.entry)+' AED', {bold:1})
-  + (r.isMort ? row('Собственные средства', fmt(r.cashInvested)+' AED', {bold:1, color:'var(--brass)'}) : '')
-  + `<h3>${r.isOff ? 'Операционный поток после handover (NOI)' : 'Годовой результат'}</h3>`
-  + row(r.isShort ? `Выручка: ADR ${fmt(num('adr'))} × ${num('occShort')}% заполняемость` : `Аренда при ${num('occLong')}% заполняемости`, fmt(r.effRevenue)+' AED')
-  + row('Операционные расходы', '−'+fmt(r.opex)+' AED', {indent:1, color:'var(--red)'})
-  + (r.isMort ? row('Платежи банку', '−'+fmt(r.debtService)+' AED', {indent:1, color:'var(--red)'}) : '')
-  + row(r.isMort?'Чистый денежный поток':'Чистый доход (NOI)', fmt(r.cashFlow)+' AED/год', {bold:1, color:'var(--green)'})
-  + row('В месяц', fmt(r.cashFlow/12)+' AED');
+  <h3>${EN ? 'Entry Cost' : 'Вход в сделку'}</h3>`
+  + row(EN ? 'Property price' : 'Цена объекта', fmt(r.P)+' AED')
+  + row(EN ? 'DLD + registration' : 'DLD + регистрация', fmt(r.dld+r.trustee+r.oqood)+' AED', {indent:1})
+  + row(commLabel, fmt(r.commission+r.vat)+' AED', {indent:1})
+  + (r.isMort ? row(EN ? 'Mortgage costs' : 'Расходы по ипотеке', fmt(r.mortgageReg+r.bankFee+r.valuation)+' AED', {indent:1}) : '')
+  + (r.furn>0 ? row(EN ? 'Furnishing' : 'Меблировка', fmt(r.furn)+' AED', {indent:1}) : '')
+  + row(EN ? 'Total entry cost' : 'Полная стоимость входа', fmt(r.entry)+' AED', {bold:1})
+  + (r.isMort ? row(EN ? 'Equity invested' : 'Собственные средства', fmt(r.cashInvested)+' AED', {bold:1, color:'var(--brass)'}) : '')
+  + `<h3>${r.isOff ? (EN ? 'Operating Cash Flow post-handover (NOI)' : 'Операционный поток после handover (NOI)') : (EN ? 'Annual Result' : 'Годовой результат')}</h3>`
+  + row(revLabel, fmt(r.effRevenue)+' AED')
+  + row(EN ? 'Operating expenses' : 'Операционные расходы', '−'+fmt(r.opex)+' AED', {indent:1, color:'var(--red)'})
+  + (r.isMort ? row(EN ? 'Debt service' : 'Платежи банку', '−'+fmt(r.debtService)+' AED', {indent:1, color:'var(--red)'}) : '')
+  + row(r.isMort ? (EN ? 'Net cash flow' : 'Чистый денежный поток') : (EN ? 'Net operating income (NOI)' : 'Чистый доход (NOI)'), fmt(r.cashFlow)+' AED/'+t('year_unit'), {bold:1, color:'var(--green)'})
+  + row(EN ? 'Per month' : 'В месяц', fmt(r.cashFlow/12)+' '+aed_mo);
 
   if (r.isOff) {
     const o = r.offplan;
 
     if (o.planError) {
-      html += `<div class="rep-foot" style="color:var(--red);border-top:none;margin-top:8px">⚠ Сумма «До handover» (${fmt(o.paidPct,1)}%) + «На handover» (${fmt(o.handoverPct,1)}%)`
-        + (o.phpOn ? ' превышает 100% — для post-handover не остаётся места.' : ` должна быть 100% (сейчас ${fmt(o.paidPct+o.handoverPct,1)}%).`)
-        + ' Проверьте проценты перед использованием отчёта.</div>';
+      html += `<div class="rep-foot" style="color:var(--red);border-top:none;margin-top:8px">⚠ `
+        + (EN
+          ? `Pre-handover (${fmt(o.paidPct,1)}%) + On handover (${fmt(o.handoverPct,1)}%)`
+          : `Сумма «До handover» (${fmt(o.paidPct,1)}%) + «На handover» (${fmt(o.handoverPct,1)}%)`)
+        + (o.phpOn
+          ? (EN ? ' exceed 100% — no room for post-handover.' : ' превышает 100% — для post-handover не остаётся места.')
+          : (EN ? ` must total 100% (currently ${fmt(o.paidPct+o.handoverPct,1)}%).` : ` должна быть 100% (сейчас ${fmt(o.paidPct+o.handoverPct,1)}%).`))
+        + (EN ? ' Check percentages before using this report.' : ' Проверьте проценты перед использованием отчёта.')
+        + `</div>`;
     }
 
-    html += `<h3>ROI на handover (${fmt(o.months)} мес.)</h3>`
-    + row(`Вложено до handover (${fmt(o.paidPct,1)}% + сборы)`, fmt(o.investedToHandover)+' AED')
-    + row(`Оценка стоимости на handover (рост ${fmt(o.growthPre,1)}%/год)`, fmt(o.valueAtHandover)+' AED')
-    + row('Бумажная прибыль', '+'+fmt(o.offplanGain)+' AED')
-    + row('ROI на вложенные средства', `${fmt(o.offplanROI,1)}% (≈${fmt(o.offplanAnnual,1)}%/год)`, {bold:1, color:'var(--green)'});
+    html += `<h3>${EN ? `ROI at handover (${fmt(o.months)} months)` : `ROI на handover (${fmt(o.months)} мес.)`}</h3>`
+    + row(EN ? `Invested pre-handover (${fmt(o.paidPct,1)}% + fees)` : `Вложено до handover (${fmt(o.paidPct,1)}% + сборы)`, fmt(o.investedToHandover)+' AED')
+    + row(EN ? `Est. value at handover (${fmt(o.growthPre,1)}%/yr growth)` : `Оценка стоимости на handover (рост ${fmt(o.growthPre,1)}%/год)`, fmt(o.valueAtHandover)+' AED')
+    + row(EN ? 'Paper profit' : 'Бумажная прибыль', '+'+fmt(o.offplanGain)+' AED')
+    + row(EN ? 'ROI on invested capital' : 'ROI на вложенные средства', `${fmt(o.offplanROI,1)}% (≈${fmt(o.offplanAnnual,1)}%/${EN?'yr':'год'})`, {bold:1, color:'var(--green)'});
 
-    html += `<h3>Таймлайн по периодам</h3>`;
+    html += `<h3>${EN ? 'Period-by-period Timeline' : 'Таймлайн по периодам'}</h3>`;
     offplanTimeline(r).forEach(p => {
       html += `<div style="font-size:11.5px;font-weight:800;color:var(--brass);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 2px">${p.title}</div>`
         + p.rows.map(([l,v,opts]) => row(l,v,opts)).join('');
     });
 
-    html += `<h3>Горизонт 5 лет</h3>`
-    + `<div style="font-size:12px;color:var(--sub);margin-bottom:4px">Рост ${fmt(o.growthPre,1)}%/год до handover`
-    + (o.toHandoverYears < 5 ? `, ${fmt(o.growthPost,1)}%/год после` : ' · 5 лет наступят ещё до handover') + `</div>`
-    + row('Прогноз стоимости', fmt(r.value5)+' AED')
-    + row('Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
+    html += `<h3>${EN ? '5-Year Horizon' : 'Горизонт 5 лет'}</h3>`
+    + `<div style="font-size:12px;color:var(--sub);margin-bottom:4px">${EN ? `Growth ${fmt(o.growthPre,1)}%/yr pre-handover` : `Рост ${fmt(o.growthPre,1)}%/год до handover`}`
     + (o.toHandoverYears < 5
-        ? row(`Чистый арендный доход за ${fmt(r.rentYears,1)} лет`, '+'+fmt(o.rentalCashTotal)+' AED')
-        : row('Доход от аренды', '0 AED (handover ещё впереди)'))
-    + row('Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}% годовых`, {bold:1, color:'var(--green)'})
-    + row('IRR — с учётом отложенных платежей', o.irr5===null ? '—' : fmt(o.irr5,1)+'%', {bold:1, color:'var(--green)'});
+        ? (EN ? `, ${fmt(o.growthPost,1)}%/yr post` : `, ${fmt(o.growthPost,1)}%/год после`)
+        : (EN ? ' · handover beyond 5-yr mark' : ' · 5 лет наступят ещё до handover')) + `</div>`
+    + row(EN ? 'Projected value' : 'Прогноз стоимости', fmt(r.value5)+' AED')
+    + row(EN ? 'Capital gain' : 'Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
+    + (o.toHandoverYears < 5
+        ? row(EN ? `Net rental income (${fmt(r.rentYears,1)} yrs)` : `Чистый арендный доход за ${fmt(r.rentYears,1)} лет`, '+'+fmt(o.rentalCashTotal)+' AED')
+        : row(EN ? 'Rental income' : 'Доход от аренды', EN ? 'AED 0 (handover pending)' : '0 AED (handover ещё впереди)'))
+    + row(EN ? 'Total ROI' : 'Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}%/${EN?'yr':'год'}`, {bold:1, color:'var(--green)'})
+    + row(EN ? 'IRR — accounting for deferred payments' : 'IRR — с учётом отложенных платежей', o.irr5===null ? '—' : fmt(o.irr5,1)+'%', {bold:1, color:'var(--green)'});
   } else {
-    html += `<h3>Горизонт 5 лет · рост ${num('growth')}%/год</h3>`
-    + row('Прогноз стоимости', fmt(r.value5)+' AED')
-    + row('Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
-    + row(`Доход от аренды (${fmt(r.rentYears,1)} лет)`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
-    + row('Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}% годовых`, {bold:1, color:'var(--green)'});
+    html += `<h3>${EN ? `5-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт 5 лет · рост ${num('growth')}%/год`}</h3>`
+    + row(EN ? 'Projected value' : 'Прогноз стоимости', fmt(r.value5)+' AED')
+    + row(EN ? 'Capital gain' : 'Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
+    + row(EN ? `Rental income (${fmt(r.rentYears,1)} yrs)` : `Доход от аренды (${fmt(r.rentYears,1)} лет)`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
+    + row(EN ? 'Total ROI' : 'Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}%/${EN?'yr':'год'}`, {bold:1, color:'var(--green)'});
   }
 
-  html += `<div class="rep-foot">Расчёт носит оценочный характер и не является инвестиционной рекомендацией. Прогноз роста стоимости — допущение. Не учтены: DEWA-депозит, chiller, страхование. Подготовлено: Parklane UAE · ${today}</div>`;
+  const footer = EN
+    ? `This analysis is indicative and does not constitute investment advice. Capital growth projections are assumptions only. Excludes: DEWA deposit, chiller, insurance. Prepared by: Parklane UAE · ${today}`
+    : `Расчёт носит оценочный характер и не является инвестиционной рекомендацией. Прогноз роста стоимости — допущение. Не учтены: DEWA-депозит, chiller, страхование. Подготовлено: Parklane UAE · ${today}`;
+  html += `<div class="rep-foot">${footer}</div>`;
 
   document.getElementById('report').innerHTML = html;
 }
@@ -769,14 +936,14 @@ function closeReport() {
 
 async function downloadPDF() {
   const btn = document.getElementById('pdfBtn');
-  btn.textContent = 'Готовлю PDF…';
+  btn.textContent = t('pdf_loading');
   btn.disabled = true;
   try {
     const el = document.getElementById('report');
     const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-    const img = canvas.toDataURL('image/jpeg', 0.95);
+    const img    = canvas.toDataURL('image/jpeg', 0.95);
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdf    = new jsPDF('p', 'mm', 'a4');
     const pw = 210, ph = 297, margin = 10;
     const iw = pw - margin*2;
     const ih = canvas.height * iw / canvas.width;
@@ -792,14 +959,14 @@ async function downloadPDF() {
     const name = (document.getElementById('projectName').value || 'ROI-Dubai').replace(/[^\wа-яА-ЯёЁ -]/g, '').trim() || 'ROI-Dubai';
     pdf.save(name + '.pdf');
   } catch (e) {
-    alert('Не удалось создать PDF: ' + e.message);
+    alert(t('pdf_error') + e.message);
   }
-  btn.textContent = '⬇ Скачать PDF';
+  btn.textContent = t('btn_pdf');
   btn.disabled = false;
 }
 
-syncVisibility();
-recalc();
+// ─── Init ────────────────────────────────────────────────────────────────────
+applyLang(LANG);
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
