@@ -24,8 +24,10 @@
     --green:#0E3B33; --brass:#B8862D; --red:#A6422F;
   }
   * { box-sizing: border-box; }
+  html { overflow-x: hidden; }
   body { margin:0; background:var(--bg); color:var(--ink); font-family:'Manrope',system-ui,sans-serif;
-         padding: calc(24px + env(safe-area-inset-top)) 16px calc(48px + env(safe-area-inset-bottom)); }
+         padding: calc(24px + env(safe-area-inset-top)) 16px calc(48px + env(safe-area-inset-bottom));
+         overflow-x: hidden; }
   .wrap { max-width:980px; margin:0 auto; }
   header { display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
   .eyebrow { font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--sub); font-weight:700; }
@@ -70,7 +72,7 @@
   .row.indent { padding-left:14px; }
   .hero { background:var(--green); color:#F2F5F2; border-radius:12px; padding:22px 20px; margin-bottom:16px; display:grid; grid-template-columns:1fr 1fr; gap:18px; }
   .hero .kl { font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; opacity:.75; font-weight:700; }
-  .hero .kv { font-family:'IBM Plex Mono',monospace; font-size:36px; font-weight:700; line-height:1.1; }
+  .hero .kv { font-family:'IBM Plex Mono',monospace; font-size:clamp(18px, 7vw, 36px); font-weight:700; line-height:1.1; overflow:hidden; word-break:break-all; min-width:0; }
   .hero .kd { font-size:12px; opacity:.7; }
   .btn { padding:11px 20px; background:var(--green); color:#fff; border:none; border-radius:9px; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; }
   .btn.gray { background:#E8EAE6; color:var(--ink); }
@@ -88,7 +90,7 @@
   .rep-foot { margin-top:24px; padding-top:10px; border-top:1px solid var(--line); font-size:10px; color:var(--sub); line-height:1.5; }
   .rep-head { border-bottom:3px solid var(--green); padding-bottom:12px; margin-bottom:14px; }
   .repbar { max-width:680px; margin:0 auto 18px; display:flex; gap:10px; }
-  input[type="text"].plain { width:100%; border:1px solid var(--line); border-radius:8px; background:#FBFBFA; padding:10px 12px; font-size:15px; font-family:inherit; color:var(--ink); outline:none; }
+  input[type="text"].plain { width:100%; border:1px solid var(--line); border-radius:8px; background:#FBFBFA; padding:10px 12px; font-size:16px; font-family:inherit; color:var(--ink); outline:none; }
 </style>
 </head>
 <body>
