@@ -757,17 +757,17 @@ function recalc() {
     + `<div class="f-hint" style="margin-bottom:10px">${phaseLabel}</div>`
     + row(EN ? 'Total invested' : 'Вложено', fmt(o.invested)+' AED', {bold:1})
     + row(EN
-        ? `  Construction payments (${o.preHandoverExit ? `paid ${fmt(r.P>0?o.constructionPaid/r.P*100:0,1)}% of ${fmt(o.paidPct,1)}%` : `${fmt(o.paidPct,1)}% of price`})`
-        : `  Строительные платежи (${o.preHandoverExit ? `внесено ${fmt(r.P>0?o.constructionPaid/r.P*100:0,1)} из ${fmt(o.paidPct,1)}%` : `${fmt(o.paidPct,1)}% от цены`})`,
+        ? `  Construction payments (${fmt(o.paidPct, o.paidPct%1===0?0:1)}%)`
+        : `  Строительные платежи (${fmt(o.paidPct, o.paidPct%1===0?0:1)}%)`,
       fmt(o.constructionPaid)+' AED', {indent:1})
-    + (!o.preHandoverExit ? row(EN ? `  Handover payment (${fmt(o.handoverPct,1)}%)` : `  Платёж на handover (${fmt(o.handoverPct,1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}) : '')
+    + (!o.preHandoverExit ? row(EN ? `  Handover payment (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)` : `  Платёж на handover (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}) : '')
     + row(EN ? '  Deal fees (DLD, Oqood, commission)' : '  Сборы (DLD, Oqood, комиссия)', fmt(o.dealFees)+' AED', {indent:1})
     + row(EN ? 'Sale price at horizon end' : 'Цена продажи в конце горизонта', fmt(o.salePrice)+' AED')
     + (!o.preHandoverExit ? row(EN ? `Net rental income (${fmt(o.rentalYears,1)} yrs)` : `Чистый доход от аренды (${fmt(o.rentalYears,1)} лет)`, '+'+fmt(o.rentalIncome)+' AED') : '')
     + row(EN ? 'Capital gain' : 'Прирост капитала', (o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
     + row(EN ? 'Total profit' : 'Итоговая прибыль', (o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED', {bold:1})
     + row(EN ? 'Total ROI' : 'Совокупный ROI', fmt(o.totalROI,1)+'%', {bold:1, color:'var(--green)'})
-    + row(EN ? '≈ annualized' : '≈ годовых', fmt(o.annualizedROI,2)+'%')
+    + row(EN ? 'Avg. annual ROI' : 'Среднегодовой ROI', fmt(o.annualizedROI,2)+'%')
     + row(EN ? `IRR — real return on deferred payments <button class="tip-btn" onclick="showTip('irr',event)">?</button>` : `IRR — реальная доходность с учётом рассрочки <button class="tip-btn" onclick="showTip('irr',event)">?</button>`, o.irrAnnual===null ? '—' : fmt(o.irrAnnual,1)+'%', {bold:1, color:'var(--green)'})
     + `</div>`;
   } else {
@@ -821,7 +821,7 @@ function buildReport() {
   <div class="kpis">
     <div class="kpi"><div class="l">${EN ? 'Net Yield' : 'Чистая доходность'}</div><div class="v">${fmt(r.netYield,2)}%</div></div>
     <div class="kpi"><div class="l">${r.isMort ? 'Cash-on-cash' : (EN ? 'Gross Yield' : 'Валовая доходность')}</div><div class="v">${fmt(r.isMort?r.coc:r.grossYield,2)}%</div></div>
-    <div class="kpi"><div class="l">${EN ? '5-yr ROI' : 'ROI за 5 лет'}</div><div class="v">${fmt(r.totalReturn5,1)}%</div></div>
+    <div class="kpi"><div class="l">${r.isOff ? (EN ? `${r.offplan.horizonYears}-yr ROI` : `ROI за ${r.offplan.horizonYears} лет`) : (EN ? '5-yr ROI' : 'ROI за 5 лет')}</div><div class="v">${fmt(r.totalReturn5,1)}%</div></div>
   </div>
   <h3>${EN ? 'Entry Cost' : 'Вход в сделку'}</h3>`
   + row(EN ? 'Property price' : 'Цена объекта', fmt(r.P)+' AED')
@@ -860,16 +860,17 @@ function buildReport() {
     + `<div style="font-size:12px;color:var(--sub);margin-bottom:4px">${phaseLabel}</div>`
     + row(EN ? 'Total invested' : 'Вложено', fmt(o.invested)+' AED', {bold:1})
     + row(EN
-        ? `Construction payments (${o.preHandoverExit ? `paid ${fmt(r.P>0?o.constructionPaid/r.P*100:0,1)}% of ${fmt(o.paidPct,1)}%` : `${fmt(o.paidPct,1)}% of price`})`
-        : `Строительные платежи (${o.preHandoverExit ? `внесено ${fmt(r.P>0?o.constructionPaid/r.P*100:0,1)} из ${fmt(o.paidPct,1)}%` : `${fmt(o.paidPct,1)}% от цены`})`,
+        ? `Construction payments (${fmt(o.paidPct, o.paidPct%1===0?0:1)}%)`
+        : `Строительные платежи (${fmt(o.paidPct, o.paidPct%1===0?0:1)}%)`,
       fmt(o.constructionPaid)+' AED', {indent:1})
-    + (!o.preHandoverExit ? row(EN ? `Handover payment (${fmt(o.handoverPct,1)}%)` : `Платёж на handover (${fmt(o.handoverPct,1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}) : '')
+    + (!o.preHandoverExit ? row(EN ? `Handover payment (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)` : `Платёж на handover (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}) : '')
     + row(EN ? 'Deal fees (DLD, Oqood, commission)' : 'Сборы (DLD, Oqood, комиссия)', fmt(o.dealFees)+' AED', {indent:1})
     + row(EN ? 'Sale price at horizon end' : 'Цена продажи в конце горизонта', fmt(o.salePrice)+' AED')
     + (!o.preHandoverExit ? row(EN ? `Net rental income (${fmt(o.rentalYears,1)} yrs)` : `Чистый доход от аренды (${fmt(o.rentalYears,1)} лет)`, '+'+fmt(o.rentalIncome)+' AED') : '')
     + row(EN ? 'Capital gain' : 'Прирост капитала', (o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
     + row(EN ? 'Total profit' : 'Итоговая прибыль', (o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED', {bold:1})
-    + row(EN ? 'Total ROI' : 'Совокупный ROI', `${fmt(o.totalROI,1)}% · ≈${fmt(o.annualizedROI,2)}%/${EN?'yr':'год'}`, {bold:1, color:'var(--green)'})
+    + row(EN ? 'Total ROI' : 'Совокупный ROI', fmt(o.totalROI,1)+'%', {bold:1, color:'var(--green)'})
+    + row(EN ? 'Avg. annual ROI' : 'Среднегодовой ROI', fmt(o.annualizedROI,2)+'%')
     + row(EN ? `IRR — real return on deferred payments <button class="tip-btn" onclick="showTip('irr',event)">?</button>` : `IRR — реальная доходность с учётом рассрочки <button class="tip-btn" onclick="showTip('irr',event)">?</button>`, o.irrAnnual===null ? '—' : fmt(o.irrAnnual,1)+'%', {bold:1, color:'var(--green)'});
   } else {
     html += `<h3>${EN ? `5-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт 5 лет · рост ${num('growth')}%/год`}</h3>`
@@ -904,22 +905,51 @@ async function downloadPDF() {
   btn.disabled = true;
   try {
     const el = document.getElementById('report');
-    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-    const img    = canvas.toDataURL('image/jpeg', 0.95);
+
+    // Collect safe cut points (bottom edge of each direct child, in DOM px from el top)
+    const elTop = el.getBoundingClientRect().top;
+    const safeBreaks = Array.from(el.querySelectorAll(':scope > *'))
+      .map(b => Math.round(b.getBoundingClientRect().bottom - elTop))
+      .sort((a, b) => a - b);
+
+    const scale = 2;
+    const canvas = await html2canvas(el, { scale, backgroundColor: '#ffffff', useCORS: true });
+
     const { jsPDF } = window.jspdf;
-    const pdf    = new jsPDF('p', 'mm', 'a4');
+    const pdf = new jsPDF('p', 'mm', 'a4');
     const pw = 210, ph = 297, margin = 10;
-    const iw = pw - margin*2;
-    const ih = canvas.height * iw / canvas.width;
-    let heightLeft = ih, pos = margin;
-    pdf.addImage(img, 'JPEG', margin, pos, iw, ih);
-    heightLeft -= (ph - margin*2);
-    while (heightLeft > 0) {
-      pdf.addPage();
-      pos = margin - (ih - heightLeft);
-      pdf.addImage(img, 'JPEG', margin, pos, iw, ih);
-      heightLeft -= (ph - margin*2);
+    const iw = pw - margin * 2;
+    const pageH = ph - margin * 2;
+    const mmPerPx = iw / el.offsetWidth;
+    const pageHpx = pageH / mmPerPx;
+
+    let pageStart = 0;
+    const totalH = el.offsetHeight;
+    let firstPage = true;
+
+    while (pageStart < totalH) {
+      const idealEnd = pageStart + pageHpx;
+      // Find last safe break at or before idealEnd (never split a block)
+      let cutAt = Math.min(idealEnd, totalH);
+      for (let i = safeBreaks.length - 1; i >= 0; i--) {
+        if (safeBreaks[i] <= idealEnd && safeBreaks[i] > pageStart) {
+          cutAt = safeBreaks[i]; break;
+        }
+      }
+
+      const srcY = Math.round(pageStart * scale);
+      const srcH = Math.round((cutAt - pageStart) * scale);
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = srcH;
+      pageCanvas.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+
+      if (!firstPage) pdf.addPage();
+      pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, iw, (cutAt - pageStart) * mmPerPx);
+      firstPage = false;
+      pageStart = cutAt;
     }
+
     const name = (document.getElementById('projectName').value || 'ROI-Dubai').replace(/[^\wа-яА-ЯёЁ -]/g, '').trim() || 'ROI-Dubai';
     pdf.save(name + '.pdf');
     saveToHistory(null);
