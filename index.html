@@ -326,9 +326,12 @@
   <div class="hist-wrap">
     <div class="hist-topbar">
       <div class="hist-title" id="hist-heading">История расчётов</div>
+      <button class="btn gray" id="hist-export-btn" style="padding:8px 14px;font-size:13px" onclick="exportHistory()">↑ Экспорт</button>
+      <button class="btn gray" id="hist-import-btn" style="padding:8px 14px;font-size:13px" onclick="importHistory()">↓ Импорт</button>
       <button class="btn gray" id="hist-clear-btn" style="padding:8px 14px;font-size:13px" onclick="clearHistoryConfirm()">Очистить</button>
       <button class="btn gray" id="hist-back-btn" style="padding:8px 14px;font-size:13px" onclick="closeHistory()">← Назад</button>
     </div>
+    <input type="file" id="histImportInput" accept=".json" style="display:none" onchange="onImportFile(event)">
     <div id="historyList"></div>
   </div>
 </div>
@@ -373,6 +376,8 @@ const TR = {
     hist_title:'История расчётов', hist_empty_h:'Нет сохранённых расчётов',
     hist_empty_d:'Сохраните из калькулятора или создайте PDF',
     hist_clear:'Очистить', hist_back:'← Назад', hist_load:'Загрузить',
+    hist_export:'↑ Экспорт', hist_import:'↓ Импорт',
+    hist_import_err:'Неверный файл. Выберите корректный JSON-файл истории.',
     hist_unnamed:'Без названия', hist_confirm_clear:'Очистить всю историю?',
     pdf_loading:'Готовлю PDF…', pdf_error:'Не удалось создать PDF: ',
     year_unit:'год', months_unit:'мес.', years_unit:'лет', aed_year:'AED/год', aed_month:'AED/мес',
@@ -404,6 +409,8 @@ const TR = {
     hist_title:'Calculation History', hist_empty_h:'No saved calculations yet',
     hist_empty_d:'Save from the calculator or create a PDF',
     hist_clear:'Clear all', hist_back:'← Back', hist_load:'Load',
+    hist_export:'↑ Export', hist_import:'↓ Import',
+    hist_import_err:'Invalid file. Please select a valid roi-history JSON file.',
     hist_unnamed:'Untitled', hist_confirm_clear:'Clear all history?',
     pdf_loading:'Preparing PDF…', pdf_error:'Could not create PDF: ',
     year_unit:'yr', months_unit:'months', years_unit:'yrs', aed_year:'AED/yr', aed_month:'AED/mo',
@@ -1005,11 +1012,57 @@ function clearHistoryConfirm() {
   }
 }
 
+function exportHistory() {
+  const hist = loadHistoryArr();
+  if (!hist.length) return;
+  const date = new Date().toISOString().slice(0, 10);
+  const blob = new Blob([JSON.stringify(hist, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `roi-history-${date}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importHistory() {
+  document.getElementById('histImportInput').click();
+}
+
+function onImportFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) throw new Error();
+      const existing = loadHistoryArr();
+      const existingIds = new Set(existing.map(h => h.id));
+      const toAdd = data.filter(h => h && typeof h.id === 'number' && !existingIds.has(h.id));
+      const merged = [...toAdd, ...existing].slice(0, HIST_MAX);
+      localStorage.setItem(HIST_KEY, JSON.stringify(merged));
+      renderHistory();
+      const btn = document.getElementById('hist-import-btn');
+      const orig = t('hist_import');
+      btn.textContent = LANG === 'en' ? `+${toAdd.length} added` : `+${toAdd.length} добавлено`;
+      setTimeout(() => { btn.textContent = orig; }, 2500);
+    } catch {
+      alert(t('hist_import_err'));
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
 function openHistory() {
-  const EN = LANG === 'en';
-  document.getElementById('hist-heading').textContent   = t('hist_title');
-  document.getElementById('hist-clear-btn').textContent = t('hist_clear');
-  document.getElementById('hist-back-btn').textContent  = t('hist_back');
+  document.getElementById('hist-heading').textContent    = t('hist_title');
+  document.getElementById('hist-export-btn').textContent = t('hist_export');
+  document.getElementById('hist-import-btn').textContent = t('hist_import');
+  document.getElementById('hist-clear-btn').textContent  = t('hist_clear');
+  document.getElementById('hist-back-btn').textContent   = t('hist_back');
   renderHistory();
   document.getElementById('historyScreen').classList.remove('hidden');
   document.getElementById('app').classList.add('hidden');
