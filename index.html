@@ -90,6 +90,27 @@
   .rep-foot { margin-top:24px; padding-top:10px; border-top:1px solid var(--line); font-size:10px; color:var(--sub); line-height:1.5; }
   .rep-head { border-bottom:3px solid var(--green); padding-bottom:12px; margin-bottom:14px; }
   .repbar { max-width:680px; margin:0 auto 18px; display:flex; gap:10px; }
+  /* History */
+  #historyScreen { position:fixed; inset:0; background:var(--bg); overflow:auto; z-index:50;
+                   padding: calc(16px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); }
+  .hist-wrap { max-width:680px; margin:0 auto; }
+  .hist-topbar { display:flex; gap:10px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
+  .hist-title { font-size:20px; font-weight:800; flex:1; min-width:120px; }
+  .hist-card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+  .hist-head { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:10px; }
+  .hist-name { font-size:15px; font-weight:700; color:var(--ink); }
+  .hist-meta { font-size:11.5px; color:var(--sub); margin-top:3px; }
+  .hist-del { border:none; background:none; cursor:pointer; font-size:22px; line-height:1; color:var(--sub); padding:0 2px; flex-shrink:0; }
+  .hist-del:hover { color:var(--red); }
+  .hist-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px; }
+  @media(max-width:440px){ .hist-kpis { grid-template-columns:repeat(2,1fr); } }
+  .hist-kpi { background:#F4F5F2; border-radius:8px; padding:8px 10px; }
+  .hist-kl { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--sub); font-weight:700; }
+  .hist-kv { font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:700; margin-top:2px; overflow:hidden; }
+  .hist-foot { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .hist-roi { font-size:11.5px; color:var(--sub); }
+  .hist-empty { text-align:center; padding:60px 20px; color:var(--sub); }
+  .hist-empty-icon { font-size:40px; margin-bottom:12px; }
   input[type="text"].plain { width:100%; border:1px solid var(--line); border-radius:8px; background:#FBFBFA; padding:10px 12px; font-size:16px; font-family:inherit; color:var(--ink); outline:none; }
 </style>
 </head>
@@ -105,6 +126,7 @@
         <button id="btn-ru" class="on" onclick="setLang('ru')">RU</button>
         <button id="btn-en" onclick="setLang('en')">EN</button>
       </div>
+      <button class="btn gray" id="btn-history" data-i18n="btn_history" onclick="openHistory()">История</button>
       <button class="btn" id="btn-report" data-i18n="btn_report" onclick="openReport()">Сформировать отчёт →</button>
     </div>
   </header>
@@ -291,6 +313,18 @@
   </div>
 </div>
 
+<!-- ИСТОРИЯ -->
+<div id="historyScreen" class="hidden">
+  <div class="hist-wrap">
+    <div class="hist-topbar">
+      <div class="hist-title" id="hist-heading">История расчётов</div>
+      <button class="btn gray" id="hist-clear-btn" style="padding:8px 14px;font-size:13px" onclick="clearHistoryConfirm()">Очистить</button>
+      <button class="btn gray" id="hist-back-btn" style="padding:8px 14px;font-size:13px" onclick="closeHistory()">← Назад</button>
+    </div>
+    <div id="historyList"></div>
+  </div>
+</div>
+
 <!-- ОТЧЁТ -->
 <div id="reportScreen" class="hidden">
   <div class="repbar">
@@ -328,6 +362,11 @@ const TR = {
     lbl_sc:'Service charge', lbl_maint:'Ремонт / резерв',
     lbl_mgmt:'Управление', hint_mgmt:'0 — если сам', lbl_growth:'Рост цены',
     btn_pdf:'⬇ Скачать PDF', btn_back:'← Назад к расчёту',
+    btn_history:'История', btn_save:'Сохранить в историю', saved_ok:'Сохранено ✓',
+    hist_title:'История расчётов', hist_empty_h:'Нет сохранённых расчётов',
+    hist_empty_d:'Сохраните из калькулятора или создайте PDF',
+    hist_clear:'Очистить', hist_back:'← Назад', hist_load:'Загрузить',
+    hist_unnamed:'Без названия', hist_confirm_clear:'Очистить всю историю?',
     pdf_loading:'Готовлю PDF…', pdf_error:'Не удалось создать PDF: ',
     year_unit:'год', months_unit:'мес.', years_unit:'лет', aed_year:'AED/год', aed_month:'AED/мес',
     pc_post:'Post-handover, %', pc_total:'Итого по плану, %',
@@ -355,6 +394,11 @@ const TR = {
     lbl_sc:'Service charge', lbl_maint:'Repairs / reserve',
     lbl_mgmt:'Management', hint_mgmt:'0 — self-managed', lbl_growth:'Capital growth',
     btn_pdf:'⬇ Download PDF', btn_back:'← Back to calculator',
+    btn_history:'History', btn_save:'Save to history', saved_ok:'Saved ✓',
+    hist_title:'Calculation History', hist_empty_h:'No saved calculations yet',
+    hist_empty_d:'Save from the calculator or create a PDF',
+    hist_clear:'Clear all', hist_back:'← Back', hist_load:'Load',
+    hist_unnamed:'Untitled', hist_confirm_clear:'Clear all history?',
     pdf_loading:'Preparing PDF…', pdf_error:'Could not create PDF: ',
     year_unit:'yr', months_unit:'months', years_unit:'yrs', aed_year:'AED/yr', aed_month:'AED/mo',
     pc_post:'Post-handover, %', pc_total:'Payment plan total, %',
@@ -813,6 +857,7 @@ function recalc() {
     + `</div>`;
   }
 
+  html += `<button class="btn gray" style="width:100%;margin-bottom:8px" onclick="saveToHistory(this)">${EN ? t('btn_save') : t('btn_save')}</button>`;
   document.getElementById('results').innerHTML = html;
 }
 
@@ -960,11 +1005,183 @@ async function downloadPDF() {
     }
     const name = (document.getElementById('projectName').value || 'ROI-Dubai').replace(/[^\wа-яА-ЯёЁ -]/g, '').trim() || 'ROI-Dubai';
     pdf.save(name + '.pdf');
+    saveToHistory(null);
   } catch (e) {
     alert(t('pdf_error') + e.message);
   }
   btn.textContent = t('btn_pdf');
   btn.disabled = false;
+}
+
+// ─── History ─────────────────────────────────────────────────────────────────
+const HIST_KEY = 'roi-history';
+const HIST_MAX = 30;
+
+const escHtml = s => String(s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function loadHistoryArr() {
+  try { return JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch { return []; }
+}
+
+function collectSnapshot() {
+  const r = calc();
+  const inputs = {};
+  ['price','area','dldPct','commPct','furnishing','rent','adr','occShort',
+   'operatorPct','utilities','scRate','maintenance','mgmtPct','growth',
+   'downPct','ratePct','termYears','handoverMonths','paidPct','handoverPct',
+   'phpMonths','growthPre','growthPost'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) inputs[id] = el.value;
+  });
+  inputs.vatEnabled = document.getElementById('vatEnabled').checked;
+  inputs.phpEnabled = document.getElementById('phpEnabled').checked;
+  return {
+    id: Date.now(),
+    ts: new Date().toISOString(),
+    name: document.getElementById('projectName').value || '',
+    modes: { ...M },
+    metrics: {
+      netYield: r.netYield, grossYield: r.grossYield, coc: r.coc,
+      noi: r.noi, cashFlow: r.cashFlow,
+      entry: r.entry, cashInvested: r.cashInvested,
+      value5: r.value5, totalReturn5: r.totalReturn5, annualized5: r.annualized5,
+    },
+    inputs
+  };
+}
+
+function saveToHistory(btn) {
+  const snap = collectSnapshot();
+  const hist = loadHistoryArr();
+  hist.unshift(snap);
+  if (hist.length > HIST_MAX) hist.length = HIST_MAX;
+  localStorage.setItem(HIST_KEY, JSON.stringify(hist));
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = t('saved_ok');
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1600);
+  }
+}
+
+function loadHistoryEntry(id) {
+  const snap = loadHistoryArr().find(h => h.id === id);
+  if (!snap) return;
+  Object.assign(M, snap.modes);
+  ['prop','fin','rent'].forEach(key => {
+    document.querySelectorAll(`#tg-${key} button`).forEach(b =>
+      b.classList.toggle('on', b.dataset.v === M[key])
+    );
+  });
+  const inp = snap.inputs;
+  ['price','area','dldPct','commPct','furnishing','rent','adr','occShort',
+   'operatorPct','utilities','scRate','maintenance','mgmtPct','growth',
+   'downPct','ratePct','termYears','handoverMonths','paidPct','handoverPct',
+   'phpMonths','growthPre','growthPost'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && inp[id] !== undefined) el.value = inp[id];
+  });
+  document.getElementById('projectName').value = snap.name || '';
+  if (inp.vatEnabled !== undefined) document.getElementById('vatEnabled').checked = inp.vatEnabled;
+  if (inp.phpEnabled !== undefined) document.getElementById('phpEnabled').checked = inp.phpEnabled;
+  closeHistory();
+  syncVisibility();
+  recalc();
+}
+
+function deleteHistoryEntry(id) {
+  const hist = loadHistoryArr().filter(h => h.id !== id);
+  localStorage.setItem(HIST_KEY, JSON.stringify(hist));
+  renderHistory();
+}
+
+function clearHistoryConfirm() {
+  if (confirm(t('hist_confirm_clear'))) {
+    localStorage.removeItem(HIST_KEY);
+    renderHistory();
+  }
+}
+
+function openHistory() {
+  const EN = LANG === 'en';
+  document.getElementById('hist-heading').textContent   = t('hist_title');
+  document.getElementById('hist-clear-btn').textContent = t('hist_clear');
+  document.getElementById('hist-back-btn').textContent  = t('hist_back');
+  renderHistory();
+  document.getElementById('historyScreen').classList.remove('hidden');
+  document.getElementById('app').classList.add('hidden');
+  window.scrollTo(0,0);
+}
+
+function closeHistory() {
+  document.getElementById('historyScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+}
+
+function renderHistory() {
+  const EN = LANG === 'en';
+  const hist = loadHistoryArr();
+  const container = document.getElementById('historyList');
+  if (!container) return;
+
+  if (hist.length === 0) {
+    container.innerHTML = `<div class="hist-empty">
+      <div class="hist-empty-icon">—</div>
+      <div style="font-weight:700;font-size:15px">${t('hist_empty_h')}</div>
+      <div style="font-size:13px;margin-top:4px">${t('hist_empty_d')}</div>
+    </div>`;
+    return;
+  }
+
+  const fmtN = (n, dec=0) => new Intl.NumberFormat(EN?'en-US':'ru-RU',
+    {maximumFractionDigits:dec,minimumFractionDigits:dec}).format(isFinite(n)?n:0);
+
+  container.innerHTML = hist.map(snap => {
+    const date = new Date(snap.ts).toLocaleString(EN?'en-GB':'ru-RU',
+      {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const name = snap.name || t('hist_unnamed');
+    const modeLabel = [
+      snap.modes.prop==='offplan' ? (EN?'Off-plan':'Офф-план') : (EN?'Ready':'Готовый'),
+      snap.modes.fin==='mortgage' ? (EN?'Mortgage':'Ипотека') : (EN?'Cash':'Наличные'),
+      snap.modes.rent==='short'   ? (EN?'Short-term':'Краткосрок') : (EN?'Long-term':'Долгосрок'),
+    ].join(' · ');
+    const m = snap.metrics;
+    const yColor = m.netYield>=6 ? 'var(--green)' : m.netYield>=4.5 ? 'var(--brass)' : 'var(--red)';
+    const kpi2label = snap.modes.fin==='mortgage' ? 'Cash-on-cash' : (EN?'Gross Yield':'Gross Yield');
+    const kpi2val   = snap.modes.fin==='mortgage' ? m.coc : m.grossYield;
+    return `<div class="hist-card">
+      <div class="hist-head">
+        <div>
+          <div class="hist-name">${escHtml(name)}</div>
+          <div class="hist-meta">${date} · ${modeLabel}</div>
+        </div>
+        <button class="hist-del" onclick="deleteHistoryEntry(${snap.id})" title="${EN?'Delete':'Удалить'}">×</button>
+      </div>
+      <div class="hist-kpis">
+        <div class="hist-kpi">
+          <div class="hist-kl">Net Yield</div>
+          <div class="hist-kv" style="color:${yColor}">${fmtN(m.netYield,2)}%</div>
+        </div>
+        <div class="hist-kpi">
+          <div class="hist-kl">${kpi2label}</div>
+          <div class="hist-kv">${fmtN(kpi2val,2)}%</div>
+        </div>
+        <div class="hist-kpi">
+          <div class="hist-kl">NOI/${EN?'yr':'год'}</div>
+          <div class="hist-kv">${fmtN(m.noi/1000,0)}k AED</div>
+        </div>
+        <div class="hist-kpi">
+          <div class="hist-kl">${EN?'Entry':'Вход'}</div>
+          <div class="hist-kv">${fmtN(m.entry/1000,0)}k AED</div>
+        </div>
+      </div>
+      <div class="hist-foot">
+        <div class="hist-roi">${EN?'5-yr ROI':'ROI 5 лет'}: ${fmtN(m.totalReturn5,1)}% · ≈${fmtN(m.annualized5,2)}%/${EN?'yr':'год'}</div>
+        <button class="btn" style="padding:7px 14px;font-size:13px" onclick="loadHistoryEntry(${snap.id})">${t('hist_load')}</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ─── Init ────────────────────────────────────────────────────────────────────
