@@ -756,7 +756,10 @@ function recalc() {
     html += `<div class="section"><div class="sec-title">${EN ? `Horizon ${fmt(o.horizonYears,1)} yrs` : `Горизонт ${fmt(o.horizonYears,1)} лет`}</div>`
     + `<div class="f-hint" style="margin-bottom:10px">${phaseLabel}</div>`
     + row(EN ? 'Total invested' : 'Вложено', fmt(o.invested)+' AED', {bold:1})
-    + row(EN ? `  Construction payments (${fmt(o.paidPct,1)}% × proportion)` : `  Строительные платежи (${fmt(o.paidPct,1)}% × доля)`, fmt(o.constructionPaid)+' AED', {indent:1})
+    + row(EN
+        ? `  Construction payments (${o.preHandoverExit ? `paid ${fmt(r.P>0?o.constructionPaid/r.P*100:0,1)}% of ${fmt(o.paidPct,1)}%` : `${fmt(o.paidPct,1)}% of price`})`
+        : `  Строительные платежи (${o.preHandoverExit ? `внесено ${fmt(r.P>0?o.constructionPaid/r.P*100:0,1)} из ${fmt(o.paidPct,1)}%` : `${fmt(o.paidPct,1)}% от цены`})`,
+      fmt(o.constructionPaid)+' AED', {indent:1})
     + (!o.preHandoverExit ? row(EN ? `  Handover payment (${fmt(o.handoverPct,1)}%)` : `  Платёж на handover (${fmt(o.handoverPct,1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}) : '')
     + row(EN ? '  Deal fees (DLD, Oqood, commission)' : '  Сборы (DLD, Oqood, комиссия)', fmt(o.dealFees)+' AED', {indent:1})
     + row(EN ? 'Sale price at horizon end' : 'Цена продажи в конце горизонта', fmt(o.salePrice)+' AED')
@@ -856,7 +859,10 @@ function buildReport() {
     html += `<h3>${EN ? `Horizon ${fmt(o.horizonYears,1)} yrs` : `Горизонт ${fmt(o.horizonYears,1)} лет`}</h3>`
     + `<div style="font-size:12px;color:var(--sub);margin-bottom:4px">${phaseLabel}</div>`
     + row(EN ? 'Total invested' : 'Вложено', fmt(o.invested)+' AED', {bold:1})
-    + row(EN ? `Construction payments (${fmt(o.paidPct,1)}% × proportion)` : `Строительные платежи (${fmt(o.paidPct,1)}% × доля)`, fmt(o.constructionPaid)+' AED', {indent:1})
+    + row(EN
+        ? `Construction payments (${o.preHandoverExit ? `paid ${fmt(r.P>0?o.constructionPaid/r.P*100:0,1)}% of ${fmt(o.paidPct,1)}%` : `${fmt(o.paidPct,1)}% of price`})`
+        : `Строительные платежи (${o.preHandoverExit ? `внесено ${fmt(r.P>0?o.constructionPaid/r.P*100:0,1)} из ${fmt(o.paidPct,1)}%` : `${fmt(o.paidPct,1)}% от цены`})`,
+      fmt(o.constructionPaid)+' AED', {indent:1})
     + (!o.preHandoverExit ? row(EN ? `Handover payment (${fmt(o.handoverPct,1)}%)` : `Платёж на handover (${fmt(o.handoverPct,1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}) : '')
     + row(EN ? 'Deal fees (DLD, Oqood, commission)' : 'Сборы (DLD, Oqood, комиссия)', fmt(o.dealFees)+' AED', {indent:1})
     + row(EN ? 'Sale price at horizon end' : 'Цена продажи в конце горизонта', fmt(o.salePrice)+' AED')
