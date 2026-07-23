@@ -56,9 +56,7 @@
   .tl-period .tl-head { font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; font-weight:800; color:var(--brass); margin-bottom:6px; }
   .tl-period .row { border-bottom:1px dashed var(--line); }
   .tl-period .row:last-child { border-bottom:none; }
-  .cols2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .cols2 .field { display:flex; flex-direction:column; }
-  .cols2 .field .f-box { margin-top:auto; }
+  .cols2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; }
   .tip-btn { display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; border-radius:50%; border:1.5px solid var(--sub); background:transparent; color:var(--sub); font-size:9px; font-weight:800; cursor:pointer; margin-left:4px; padding:0; line-height:1; vertical-align:middle; opacity:.65; font-family:'IBM Plex Mono',monospace; }
   .tip-btn:hover { opacity:1; }
   .tip-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
@@ -80,8 +78,9 @@
   .row.bold .l { color:var(--ink); font-weight:700; }
   .row.bold .v { font-size:15.5px; font-weight:700; }
   .row.indent { padding-left:14px; }
-  .hero { background:var(--green); color:#F2F5F2; border-radius:12px; padding:22px 20px; margin-bottom:16px; display:grid; grid-template-columns:1fr 1fr; gap:18px; }
-  .hero .kl { font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; opacity:.75; font-weight:700; }
+  .hero { background:var(--green); color:#F2F5F2; border-radius:12px; padding:22px 20px; margin-bottom:16px; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:auto auto auto; row-gap:4px; column-gap:18px; align-items:start; }
+  .hero .kl { font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; opacity:.75; font-weight:700; display:flex; align-items:center; gap:4px; margin-bottom:4px; }
+  .hero .kv { margin-bottom:2px; }
   .hero .kv { font-family:'IBM Plex Mono',monospace; font-size:clamp(18px, 7vw, 36px); font-weight:700; line-height:1.1; overflow:hidden; word-break:break-all; min-width:0; }
   .hero .kd { font-size:12px; opacity:.7; }
   .btn { padding:11px 20px; background:var(--green); color:#fff; border:none; border-radius:9px; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; }
@@ -693,16 +692,12 @@ function recalc() {
 
   let html = `
   <div class="hero">
-    <div>
-      <div class="kl">${EN ? 'Net Yield' : 'Чистая доходность'} <button class="tip-btn" onclick="showTip('netYield',event)">?</button></div>
-      <div class="kv" style="color:${heroColor}">${fmt(r.netYield,2)}%</div>
-      <div class="kd">${EN ? 'NOI / total entry cost' : 'NOI / полная стоимость входа'}</div>
-    </div>
-    <div>
-      <div class="kl">${r.isMort ? 'Cash-on-cash' : (EN ? 'Gross Yield' : 'Валовая доходность')} <button class="tip-btn" onclick="showTip('${r.isMort?'coc':'grossYield'}',event)">?</button></div>
-      <div class="kv">${fmt(r.isMort?r.coc:r.grossYield,2)}%</div>
-      <div class="kd">${r.isMort ? (EN ? 'cash flow / equity' : 'поток / собственные средства') : (EN ? 'revenue / property price' : 'выручка / цена объекта')}</div>
-    </div>
+    <div class="kl">${EN ? 'Net Yield' : 'Чистая доходность'} <button class="tip-btn" onclick="showTip('netYield',event)">?</button></div>
+    <div class="kl">${r.isMort ? 'Cash-on-cash' : (EN ? 'Gross Yield' : 'Валовая доходность')} <button class="tip-btn" onclick="showTip('${r.isMort?'coc':'grossYield'}',event)">?</button></div>
+    <div class="kv" style="color:${heroColor}">${fmt(r.netYield,2)}%</div>
+    <div class="kv">${fmt(r.isMort?r.coc:r.grossYield,2)}%</div>
+    <div class="kd">${EN ? 'NOI / total entry cost' : 'NOI / полная стоимость входа'}</div>
+    <div class="kd">${r.isMort ? (EN ? 'cash flow / equity' : 'поток / собственные средства') : (EN ? 'revenue / property price' : 'выручка / цена объекта')}</div>
   </div>
 
   <div class="section"><div class="sec-title">${EN ? 'Entry Cost' : 'Стоимость входа'}</div>`
