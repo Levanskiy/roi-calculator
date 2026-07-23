@@ -59,6 +59,14 @@
   .cols2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .cols2 .field { display:flex; flex-direction:column; }
   .cols2 .field .f-box { margin-top:auto; }
+  .tip-btn { display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; border-radius:50%; border:1.5px solid var(--sub); background:transparent; color:var(--sub); font-size:9px; font-weight:800; cursor:pointer; margin-left:4px; padding:0; line-height:1; vertical-align:middle; opacity:.65; font-family:'IBM Plex Mono',monospace; }
+  .tip-btn:hover { opacity:1; }
+  .tip-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .tip-overlay.hidden { display:none; }
+  .tip-card { background:#fff; border-radius:14px; padding:20px 20px 22px; max-width:320px; width:100%; position:relative; box-shadow:0 8px 32px rgba(0,0,0,.18); }
+  .tip-term { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--sub); margin-bottom:8px; padding-right:20px; }
+  .tip-body { font-size:14px; line-height:1.55; color:var(--ink); }
+  .tip-close { position:absolute; top:14px; right:14px; background:none; border:none; font-size:18px; cursor:pointer; color:var(--sub); padding:0; line-height:1; }
   .cols3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
   .toggle { display:flex; background:#E8EAE6; border-radius:9px; padding:3px; margin-bottom:14px; }
   .toggle button { flex:1; padding:8px 6px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:700; background:transparent; color:var(--sub); transition:all .15s; }
@@ -686,12 +694,12 @@ function recalc() {
   let html = `
   <div class="hero">
     <div>
-      <div class="kl">${EN ? 'Net Yield' : 'Чистая доходность'}</div>
+      <div class="kl">${EN ? 'Net Yield' : 'Чистая доходность'} <button class="tip-btn" onclick="showTip('netYield',event)">?</button></div>
       <div class="kv" style="color:${heroColor}">${fmt(r.netYield,2)}%</div>
       <div class="kd">${EN ? 'NOI / total entry cost' : 'NOI / полная стоимость входа'}</div>
     </div>
     <div>
-      <div class="kl">${r.isMort ? 'Cash-on-cash' : (EN ? 'Gross Yield' : 'Валовая доходность')}</div>
+      <div class="kl">${r.isMort ? 'Cash-on-cash' : (EN ? 'Gross Yield' : 'Валовая доходность')} <button class="tip-btn" onclick="showTip('${r.isMort?'coc':'grossYield'}',event)">?</button></div>
       <div class="kv">${fmt(r.isMort?r.coc:r.grossYield,2)}%</div>
       <div class="kd">${r.isMort ? (EN ? 'cash flow / equity' : 'поток / собственные средства') : (EN ? 'revenue / property price' : 'выручка / цена объекта')}</div>
     </div>
@@ -720,7 +728,7 @@ function recalc() {
   + (r.mgmt>0 ? row(EN ? 'Management' : 'Управление', '−'+fmt(r.mgmt)+' AED', {indent:1, color:'var(--red)'}) : '')
   + row(EN ? 'Repairs / reserve' : 'Ремонт / резерв', '−'+fmt(num('maintenance'))+' AED', {indent:1, color:'var(--red)'})
   + (r.isMort ? row(EN ? 'Debt service' : 'Платежи банку', '−'+fmt(r.debtService)+' AED', {indent:1, color:'var(--red)'}) : '')
-  + row(r.isMort ? (EN ? 'Net cash flow' : 'Чистый поток') : (EN ? 'Net operating income (NOI)' : 'Чистый доход (NOI)'), fmt(r.cashFlow)+' AED/'+t('year_unit'), {bold:1, color:yColor})
+  + row(r.isMort ? (EN ? 'Net cash flow' : 'Чистый поток') : `${EN ? 'Net operating income (NOI)' : 'Чистый доход (NOI)'} <button class="tip-btn" onclick="showTip('noi',event)">?</button>`, fmt(r.cashFlow)+' AED/'+t('year_unit'), {bold:1, color:yColor})
   + row(EN ? 'Per month' : 'В месяц', fmt(r.cashFlow/12)+' '+aed_mo)
   + (r.isOff ? '' : row(EN ? 'Payback period' : 'Окупаемость', isFinite(r.payback)?fmt(r.payback,1)+' '+(EN?'yrs':'лет'):'—'))
   + `</div>`;
@@ -755,7 +763,7 @@ function recalc() {
     + row(EN ? 'Total profit' : 'Итоговая прибыль', (o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED', {bold:1})
     + row(EN ? 'Total ROI' : 'Совокупный ROI', fmt(o.totalROI,1)+'%', {bold:1, color:'var(--green)'})
     + row(EN ? '≈ annualized' : '≈ годовых', fmt(o.annualizedROI,2)+'%')
-    + row(EN ? 'IRR — accounting for deferred payments' : 'IRR — с учётом отложенных платежей', o.irrAnnual===null ? '—' : fmt(o.irrAnnual,1)+'%', {bold:1, color:'var(--green)'})
+    + row(EN ? `IRR — real return on deferred payments <button class="tip-btn" onclick="showTip('irr',event)">?</button>` : `IRR — реальная доходность с учётом рассрочки <button class="tip-btn" onclick="showTip('irr',event)">?</button>`, o.irrAnnual===null ? '—' : fmt(o.irrAnnual,1)+'%', {bold:1, color:'var(--green)'})
     + `</div>`;
   } else {
     html += `<div class="section"><div class="sec-title">${EN ? `5-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт 5 лет · рост ${num('growth')}%/год`}</div>`
@@ -854,7 +862,7 @@ function buildReport() {
     + row(EN ? 'Capital gain' : 'Прирост капитала', (o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
     + row(EN ? 'Total profit' : 'Итоговая прибыль', (o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED', {bold:1})
     + row(EN ? 'Total ROI' : 'Совокупный ROI', `${fmt(o.totalROI,1)}% · ≈${fmt(o.annualizedROI,2)}%/${EN?'yr':'год'}`, {bold:1, color:'var(--green)'})
-    + row(EN ? 'IRR — accounting for deferred payments' : 'IRR — с учётом отложенных платежей', o.irrAnnual===null ? '—' : fmt(o.irrAnnual,1)+'%', {bold:1, color:'var(--green)'});
+    + row(EN ? `IRR — real return on deferred payments <button class="tip-btn" onclick="showTip('irr',event)">?</button>` : `IRR — реальная доходность с учётом рассрочки <button class="tip-btn" onclick="showTip('irr',event)">?</button>`, o.irrAnnual===null ? '—' : fmt(o.irrAnnual,1)+'%', {bold:1, color:'var(--green)'});
   } else {
     html += `<h3>${EN ? `5-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт 5 лет · рост ${num('growth')}%/год`}</h3>`
     + row(EN ? 'Projected value' : 'Прогноз стоимости', fmt(r.value5)+' AED')
@@ -1084,6 +1092,42 @@ function renderHistory() {
 }
 
 // ─── Init ────────────────────────────────────────────────────────────────────
+const TIPS = {
+  netYield: {
+    ru: { term: 'Чистая доходность (Net Yield)', body: 'Чистый годовой доход после всех расходов, делённый на полную стоимость входа в сделку (цена + сборы + меблировка).' },
+    en: { term: 'Net Yield', body: 'Annual income after all expenses, divided by total money you put into the deal (price + fees + furnishing).' }
+  },
+  grossYield: {
+    ru: { term: 'Валовая доходность (Gross Yield)', body: 'Годовая аренда, делённая на цену объекта. Без учёта расходов — показывает потенциал до вычетов.' },
+    en: { term: 'Gross Yield', body: 'Annual rent divided by property price. Before any expenses — shows earning potential before deductions.' }
+  },
+  coc: {
+    ru: { term: 'Cash-on-cash', body: 'Годовой денежный поток, делённый на собственные вложенные деньги (без заёмных). Показывает реальную отдачу именно на ваш капитал при использовании ипотеки.' },
+    en: { term: 'Cash-on-cash', body: 'Annual cash flow divided by your own money invested (excluding the loan). Shows the real return on your own capital when using a mortgage.' }
+  },
+  noi: {
+    ru: { term: 'NOI — Чистый операционный доход', body: 'Чистый доход от аренды за год после вычета всех расходов: service charge, управление, ремонт. Без ипотечных платежей.' },
+    en: { term: 'NOI — Net Operating Income', body: 'Annual rental income after all operating costs: service charge, management, repairs. Excludes mortgage payments.' }
+  },
+  irr: {
+    ru: { term: 'IRR — Внутренняя норма доходности', body: 'Учитывает, что платежи растянуты во времени. Платить частями и позже выгоднее, чем всё сразу — поэтому эта доходность выше обычной.' },
+    en: { term: 'IRR — Internal Rate of Return', body: 'Accounts for the timing of payments. Paying in installments over time is better than paying everything upfront — so IRR is typically higher than simple annualized ROI.' }
+  }
+};
+
+function showTip(key, e) {
+  if (e) e.stopPropagation();
+  const tip = TIPS[key];
+  if (!tip) return;
+  const d = tip[LANG] || tip.ru;
+  document.getElementById('tipTerm').textContent = d.term;
+  document.getElementById('tipBody').textContent = d.body;
+  document.getElementById('tipOverlay').classList.remove('hidden');
+}
+function closeTip() {
+  document.getElementById('tipOverlay').classList.add('hidden');
+}
+
 applyLang(LANG);
 
 if ('serviceWorker' in navigator) {
@@ -1092,5 +1136,12 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+<div id="tipOverlay" class="tip-overlay hidden" onclick="closeTip()">
+  <div class="tip-card" onclick="event.stopPropagation()">
+    <button class="tip-close" onclick="closeTip()">✕</button>
+    <div class="tip-term" id="tipTerm"></div>
+    <div class="tip-body" id="tipBody"></div>
+  </div>
+</div>
 </body>
 </html>
