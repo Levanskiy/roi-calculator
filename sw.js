@@ -1,4 +1,4 @@
-const CACHE = 'roi-dubai-v11';
+const CACHE = 'roi-dubai-v12';
 const ASSETS = [
   './',
   './index.html',
