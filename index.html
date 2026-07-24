@@ -733,7 +733,6 @@ function recalc() {
   + (r.isMort ? row(EN ? 'Debt service' : 'Платежи банку', '−'+fmt(r.debtService)+' AED', {indent:1, color:'var(--red)'}) : '')
   + row(r.isMort ? (EN ? 'Net cash flow' : 'Чистый поток') : `${EN ? 'Net operating income (NOI)' : 'Чистый доход (NOI)'} <button class="tip-btn" onclick="showTip('noi',event)">?</button>`, fmt(r.cashFlow)+' AED/'+t('year_unit'), {bold:1, color:yColor})
   + row(EN ? 'Per month' : 'В месяц', fmt(r.cashFlow/12)+' '+aed_mo)
-  + (r.isOff ? '' : row(EN ? 'Payback period' : 'Окупаемость', isFinite(r.payback)?fmt(r.payback,1)+' '+(EN?'yrs':'лет'):'—'))
   + `</div>`;
 
   if (r.isOff) {
