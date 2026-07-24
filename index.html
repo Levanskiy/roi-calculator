@@ -905,48 +905,83 @@ async function downloadPDF() {
   btn.disabled = true;
   try {
     const el = document.getElementById('report');
+    const { jsPDF } = window.jspdf;
+    const pw = 210, ph = 297, margin = 10;
+    const iw = pw - margin * 2;
+    const pageH = ph - margin * 2;
+    const maxPages = 2;
 
-    // Collect safe cut points (bottom edge of each direct child, in DOM px from el top)
+    // box-sizing:border-box + max-width fixed → offsetWidth constant under padding changes
+    const mmPerPx = iw / el.offsetWidth;
+    const maxHpx  = maxPages * pageH / mmPerPx;
+
+    // Inject temporary style to compress content into maxPages if needed
+    const compStyle = document.createElement('style');
+    document.head.appendChild(compStyle);
+    const raf2 = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const applyCompress = (f) => {
+      compStyle.textContent = f >= 1 ? '' : [
+        `#report{padding:${28*f|0}px ${26*f|0}px!important}`,
+        `#report .row{padding:${7*f|0}px 0!important}`,
+        `#report .row .l,#report .row .v{font-size:${(13.5*f).toFixed(1)}px!important}`,
+        `#report .row.bold .v{font-size:${(15.5*f).toFixed(1)}px!important}`,
+        `#report h3{margin:${18*f|0}px 0 ${4*f|0}px!important;font-size:${13*f|0}px!important}`,
+        `#report h2{font-size:${24*f|0}px!important}`,
+        `#report .kpis{margin:${16*f|0}px 0 ${6*f|0}px!important;gap:${12*f|0}px!important}`,
+        `#report .kpi{padding:${13*f|0}px!important}`,
+        `#report .kpi .v{font-size:${21*f|0}px!important}`,
+        `#report .rep-head{padding-bottom:${12*f|0}px!important;margin-bottom:${14*f|0}px!important}`,
+        `#report .rep-foot{margin-top:${24*f|0}px!important;padding-top:${8*f|0}px!important}`,
+      ].join('');
+    };
+
+    if (el.offsetHeight > maxHpx) {
+      let f = Math.max(0.72, (maxHpx / el.offsetHeight) * 0.96);
+      applyCompress(f);
+      await raf2();
+      if (el.offsetHeight > maxHpx) {
+        f = Math.max(0.72, f * (maxHpx / el.offsetHeight) * 0.96);
+        applyCompress(f);
+        await raf2();
+      }
+    }
+    await raf2();
+
+    // Collect safe cut points after compression (bottom of each direct child)
     const elTop = el.getBoundingClientRect().top;
     const safeBreaks = Array.from(el.querySelectorAll(':scope > *'))
       .map(b => Math.round(b.getBoundingClientRect().bottom - elTop))
+      .filter(y => y > 0)
       .sort((a, b) => a - b);
 
     const scale = 2;
     const canvas = await html2canvas(el, { scale, backgroundColor: '#ffffff', useCORS: true });
 
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pw = 210, ph = 297, margin = 10;
-    const iw = pw - margin * 2;
-    const pageH = ph - margin * 2;
-    const mmPerPx = iw / el.offsetWidth;
-    const pageHpx = pageH / mmPerPx;
+    applyCompress(1);
+    document.head.removeChild(compStyle);
 
-    let pageStart = 0;
-    const totalH = el.offsetHeight;
-    let firstPage = true;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageHpx = pageH / mmPerPx;
+    // Stop at last real content element to avoid trailing-padding empty page
+    const totalH = safeBreaks.length ? safeBreaks[safeBreaks.length - 1] : canvas.height / scale;
+    let pageStart = 0, firstPage = true;
 
     while (pageStart < totalH) {
       const idealEnd = pageStart + pageHpx;
-      // Find last safe break at or before idealEnd (never split a block)
       let cutAt = Math.min(idealEnd, totalH);
       for (let i = safeBreaks.length - 1; i >= 0; i--) {
-        if (safeBreaks[i] <= idealEnd && safeBreaks[i] > pageStart) {
-          cutAt = safeBreaks[i]; break;
-        }
+        if (safeBreaks[i] <= idealEnd && safeBreaks[i] > pageStart) { cutAt = safeBreaks[i]; break; }
       }
-
-      const srcY = Math.round(pageStart * scale);
       const srcH = Math.round((cutAt - pageStart) * scale);
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = canvas.width;
-      pageCanvas.height = srcH;
-      pageCanvas.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
-
-      if (!firstPage) pdf.addPage();
-      pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, iw, (cutAt - pageStart) * mmPerPx);
-      firstPage = false;
+      if (srcH > 0) {
+        const pg = document.createElement('canvas');
+        pg.width = canvas.width; pg.height = srcH;
+        pg.getContext('2d').drawImage(canvas, 0, Math.round(pageStart * scale), canvas.width, srcH, 0, 0, canvas.width, srcH);
+        if (!firstPage) pdf.addPage();
+        pdf.addImage(pg.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, iw, (cutAt - pageStart) * mmPerPx);
+        firstPage = false;
+      }
       pageStart = cutAt;
     }
 
