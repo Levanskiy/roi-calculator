@@ -98,6 +98,7 @@
   .kpi .v { font-family:'IBM Plex Mono',monospace; font-size:21px; font-weight:700; color:var(--green); }
   .rep-foot { margin-top:24px; padding-top:10px; border-top:1px solid var(--line); font-size:10px; color:var(--sub); line-height:1.5; }
   .rep-head { border-bottom:3px solid var(--green); padding-bottom:12px; margin-bottom:14px; }
+  .rep-section { break-inside: avoid; page-break-inside: avoid; }
   .repbar { max-width:680px; margin:0 auto 18px; display:flex; gap:10px; }
   /* History */
   #historyScreen { position:fixed; inset:0; background:var(--bg); overflow:auto; z-index:50;
@@ -823,7 +824,7 @@ function buildReport() {
     <div class="kpi"><div class="l">${r.isMort ? 'Cash-on-cash' : (EN ? 'Gross Yield' : 'Валовая доходность')}</div><div class="v">${fmt(r.isMort?r.coc:r.grossYield,2)}%</div></div>
     <div class="kpi"><div class="l">${r.isOff ? (EN ? `${r.offplan.horizonYears}-yr ROI` : `ROI за ${r.offplan.horizonYears} лет`) : (EN ? '5-yr ROI' : 'ROI за 5 лет')}</div><div class="v">${fmt(r.totalReturn5,1)}%</div></div>
   </div>
-  <h3>${EN ? 'Entry Cost' : 'Вход в сделку'}</h3>`
+  <div class="rep-section"><h3>${EN ? 'Entry Cost' : 'Вход в сделку'}</h3>`
   + row(EN ? 'Property price' : 'Цена объекта', fmt(r.P)+' AED')
   + row(EN ? 'DLD + registration' : 'DLD + регистрация', fmt(r.dld+r.trustee+r.oqood)+' AED', {indent:1})
   + row(commLabel, fmt(r.commission+r.vat)+' AED', {indent:1})
@@ -831,12 +832,13 @@ function buildReport() {
   + (r.furn>0 ? row(EN ? 'Furnishing' : 'Меблировка', fmt(r.furn)+' AED', {indent:1}) : '')
   + row(EN ? 'Total entry cost' : 'Полная стоимость входа', fmt(r.entry)+' AED', {bold:1})
   + (r.isMort ? row(EN ? 'Equity invested' : 'Собственные средства', fmt(r.cashInvested)+' AED', {bold:1, color:'var(--brass)'}) : '')
-  + `<h3>${r.isOff ? (EN ? 'Operating Cash Flow post-handover (NOI)' : 'Операционный поток после handover (NOI)') : (EN ? 'Annual Result' : 'Годовой результат')}</h3>`
+  + `</div><div class="rep-section"><h3>${r.isOff ? (EN ? 'Operating Cash Flow post-handover (NOI)' : 'Операционный поток после handover (NOI)') : (EN ? 'Annual Result' : 'Годовой результат')}</h3>`
   + row(revLabel, fmt(r.effRevenue)+' AED')
   + row(EN ? 'Operating expenses' : 'Операционные расходы', '−'+fmt(r.opex)+' AED', {indent:1, color:'var(--red)'})
   + (r.isMort ? row(EN ? 'Debt service' : 'Платежи банку', '−'+fmt(r.debtService)+' AED', {indent:1, color:'var(--red)'}) : '')
   + row(r.isMort ? (EN ? 'Net cash flow' : 'Чистый денежный поток') : (EN ? 'Net operating income (NOI)' : 'Чистый доход (NOI)'), fmt(r.cashFlow)+' AED/'+t('year_unit'), {bold:1, color:'var(--green)'})
-  + row(EN ? 'Per month' : 'В месяц', fmt(r.cashFlow/12)+' '+aed_mo);
+  + row(EN ? 'Per month' : 'В месяц', fmt(r.cashFlow/12)+' '+aed_mo)
+  + `</div>`;
 
   if (r.isOff) {
     const o = r.offplan;
@@ -856,7 +858,7 @@ function buildReport() {
       : (EN ? `Construction ${constructMos} months + rental ${fmt(o.rentalYears,1)} yrs`
             : `Стройка ${constructMos} мес. + аренда ${fmt(o.rentalYears,1)} лет`);
 
-    html += `<h3>${EN ? `Horizon ${fmt(o.horizonYears,1)} yrs` : `Горизонт ${fmt(o.horizonYears,1)} лет`}</h3>`
+    html += `<div class="rep-section"><h3>${EN ? `Horizon ${fmt(o.horizonYears,1)} yrs` : `Горизонт ${fmt(o.horizonYears,1)} лет`}</h3>`
     + `<div style="font-size:12px;color:var(--sub);margin-bottom:4px">${phaseLabel}</div>`
     + row(EN ? 'Total invested' : 'Вложено', fmt(o.invested)+' AED', {bold:1})
     + row(EN
@@ -871,13 +873,15 @@ function buildReport() {
     + row(EN ? 'Total profit' : 'Итоговая прибыль', (o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED', {bold:1})
     + row(EN ? 'Total ROI' : 'Совокупный ROI', fmt(o.totalROI,1)+'%', {bold:1, color:'var(--green)'})
     + row(EN ? 'Avg. annual ROI' : 'Среднегодовой ROI', fmt(o.annualizedROI,2)+'%')
-    + row(EN ? `IRR — real return on deferred payments <button class="tip-btn" onclick="showTip('irr',event)">?</button>` : `IRR — реальная доходность с учётом рассрочки <button class="tip-btn" onclick="showTip('irr',event)">?</button>`, o.irrAnnual===null ? '—' : fmt(o.irrAnnual,1)+'%', {bold:1, color:'var(--green)'});
+    + row(EN ? `IRR — real return on deferred payments <button class="tip-btn" onclick="showTip('irr',event)">?</button>` : `IRR — реальная доходность с учётом рассрочки <button class="tip-btn" onclick="showTip('irr',event)">?</button>`, o.irrAnnual===null ? '—' : fmt(o.irrAnnual,1)+'%', {bold:1, color:'var(--green)'})
+    + `</div>`;
   } else {
-    html += `<h3>${EN ? `5-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт 5 лет · рост ${num('growth')}%/год`}</h3>`
+    html += `<div class="rep-section"><h3>${EN ? `5-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт 5 лет · рост ${num('growth')}%/год`}</h3>`
     + row(EN ? 'Projected value' : 'Прогноз стоимости', fmt(r.value5)+' AED')
     + row(EN ? 'Capital gain' : 'Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
     + row(EN ? `Rental income (${fmt(r.rentYears,1)} yrs)` : `Доход от аренды (${fmt(r.rentYears,1)} лет)`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
-    + row(EN ? 'Total ROI' : 'Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}%/${EN?'yr':'год'}`, {bold:1, color:'var(--green)'});
+    + row(EN ? 'Total ROI' : 'Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}%/${EN?'yr':'год'}`, {bold:1, color:'var(--green)'})
+    + `</div>`;
   }
 
   const footer = EN
