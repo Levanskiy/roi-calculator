@@ -42,6 +42,11 @@
   .f-box input { flex:1; border:none; outline:none; background:transparent; padding:10px 12px; font-size:16px; font-family:'IBM Plex Mono',monospace; color:var(--ink); min-width:0; width:100%; }
   .f-box .suffix { padding:0 12px; font-size:13px; color:var(--sub); border-left:1px solid var(--line); align-self:stretch; display:flex; align-items:center; background:#F4F5F2; white-space:nowrap; }
   .f-hint { font-size:12px; color:var(--sub); margin-top:4px; }
+  .adv-details { margin-top:10px; }
+  .adv-details summary { font-size:13px; color:var(--sub); cursor:pointer; user-select:none; list-style:none; padding:4px 0; }
+  .adv-details summary::-webkit-details-marker { display:none; }
+  .adv-details summary::before { content:'▸ '; font-size:11px; }
+  .adv-details[open] summary::before { content:'▾ '; }
   .field { margin-bottom:14px; }
   .checkbox-row { display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:700; color:var(--ink); margin-bottom:14px; cursor:pointer; }
   .checkbox-row input { width:16px; height:16px; accent-color:var(--green); flex-shrink:0; }
@@ -215,6 +220,11 @@
           <div class="f-label" data-i18n="lbl_horizonYears">Горизонт удержания</div>
           <div class="f-box"><input id="horizonYears" inputmode="decimal" value="5" oninput="recalc()"><span class="suffix" data-i18n="years_unit">лет</span></div>
         </div>
+        <div class="field" id="f-exitCosts">
+          <div class="f-label" data-i18n="lbl_exitCosts">Расходы на выход</div>
+          <div class="f-box"><input id="exitCostsPct" inputmode="decimal" value="2.1" oninput="recalc()"><span class="suffix">%</span></div>
+          <div class="f-hint" data-i18n="hint_exitCosts">комиссия агента при продаже</div>
+        </div>
       </div>
 
       <div class="section hidden" id="sec-offplan">
@@ -279,6 +289,17 @@
           <div class="f-label" data-i18n="lbl_occ">Заполняемость</div>
           <div class="f-box"><input id="occLong" inputmode="decimal" value="95" oninput="recalc()"><span class="suffix">%</span></div>
         </div>
+        <details class="adv-details" id="adv-long">
+          <summary data-i18n="lbl_advanced">Дополнительно</summary>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_rent_index">Индексация аренды</div>
+            <div class="f-box"><input id="rentIndexPct" inputmode="decimal" value="0" oninput="recalc()"><span class="suffix">%/год</span></div>
+          </div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_vacancy_months">Вакантность</div>
+            <div class="f-box"><input id="vacancyMonths" inputmode="decimal" value="0" oninput="recalc()"><span class="suffix" data-i18n="hint_vacancy_months">мес. простоя в год</span></div>
+          </div>
+        </details>
       </div>
 
       <div class="section hidden" id="sec-short">
@@ -447,6 +468,8 @@ const TR = {
     lbl_price:'Цена объекта', lbl_area:'Площадь', lbl_dld:'DLD сбор',
     lbl_comm:'Комиссия агента', lbl_vat_check:'VAT 5%', lbl_furnishing:'Меблировка',
     sec_offplan:'Офф-план: план платежей', lbl_horizonYears:'Горизонт удержания',
+    lbl_exitCosts:'Расходы на выход', hint_exitCosts:'комиссия агента при продаже',
+    lbl_advanced:'Дополнительно', lbl_rent_index:'Индексация аренды', lbl_vacancy_months:'Вакантность', hint_vacancy_months:'мес. простоя в год',
     lbl_handoverMonths:'До handover, мес.',
     lbl_paidPct:'До handover, %', hint_paid:'платежи во время стройки',
     lbl_handoverPct:'На handover, %', hint_handover:'платёж при передаче ключей',
@@ -496,6 +519,8 @@ const TR = {
     lbl_price:'Property Price', lbl_area:'Area', lbl_dld:'DLD Fee',
     lbl_comm:'Agent Commission', lbl_vat_check:'VAT 5%', lbl_furnishing:'Furnishing',
     sec_offplan:'Off-plan: Payment Plan', lbl_horizonYears:'Holding horizon',
+    lbl_exitCosts:'Exit costs', hint_exitCosts:'buyer agent fee on sale',
+    lbl_advanced:'Advanced', lbl_rent_index:'Rent indexation', lbl_vacancy_months:'Vacancy', hint_vacancy_months:'idle months per year',
     lbl_handoverMonths:'Pre-handover, months',
     lbl_paidPct:'Pre-handover, %', hint_paid:'payments during construction',
     lbl_handoverPct:'On handover, %', hint_handover:'payment on key delivery',
@@ -768,6 +793,10 @@ function calc() {
   const entry       = P + dealCosts + furn;
   const cashInvested= isMort ? down + dealCosts + furn : entry;
 
+  const exitCostsPct  = Math.max(0, num('exitCostsPct'));
+  const rentIndexPct  = !isShort ? Math.max(0, num('rentIndexPct')) : 0;
+  const vacancyMonths = !isShort ? Math.max(0, Math.min(11.9, num('vacancyMonths'))) : 0;
+
   let grossRevenue, effRevenue, operatorFee = 0, util = 0;
   if (isShort) {
     grossRevenue = num('adr')*365*(num('occShort')/100);
@@ -776,7 +805,7 @@ function calc() {
     util         = num('utilities');
   } else {
     grossRevenue = num('rent');
-    effRevenue   = grossRevenue; // долгосрок = 100%, без коэффициента заполняемости
+    effRevenue   = vacancyMonths > 0 ? grossRevenue * (12 - vacancyMonths) / 12 : grossRevenue;
   }
 
   const serviceCharge = num('area')*num('scRate');
@@ -792,6 +821,7 @@ function calc() {
   const payback    = cashFlow>0 ? cashInvested/cashFlow : Infinity;
 
   let value5, rentYears, totalReturn5, annualized5, horizYrs = 5, offplan = null;
+  let cumIncome = 0, exitCostsOut = 0;
 
   if (isOff) {
     const horizonYears  = Math.max(0.1, num('horizonYears'));
@@ -818,7 +848,10 @@ function calc() {
     }
 
     const rentalYears  = preHandoverExit ? 0 : Math.max(0, horizonYears - toHandoverYrs);
-    const rentalIncome = noi * rentalYears;
+    const r_idx_off = rentIndexPct / 100;
+    const rentalIncome = rentalYears > 0
+      ? (r_idx_off > 0 ? noi * (Math.pow(1 + r_idx_off, rentalYears) - 1) / r_idx_off : noi * rentalYears)
+      : 0;
 
     const dealFees         = dld + oqood + commission + vat;
     const constrMosPaid    = Math.min(horizonMos, toHandoverMosInt);
@@ -828,24 +861,28 @@ function calc() {
     const furnPaid     = preHandoverExit ? 0 : furn;
     const invested     = constructionPaid + handoverPaid + dealFees + furnPaid;
 
-    const capitalGain   = salePrice - entry;
+    const exitCosts    = salePrice * exitCostsPct / 100;
+    const netSalePrice = salePrice - exitCosts;
+    const capitalGain   = netSalePrice - entry;
     const totalProfit   = capitalGain + rentalIncome;
     const totalROI      = invested > 0 ? totalProfit / invested * 100 : 0;
     const annualizedROI = horizonYears > 0
       ? (Math.pow(1 + Math.max(totalROI, -99)/100, 1/horizonYears) - 1) * 100 : 0;
     const irrAnnual = computeOffplanIRRNew(
-      toHandoverMosInt, horizonMos, paidPct, handoverPct, dealFees, furnPaid, P, noi, salePrice
+      toHandoverMosInt, horizonMos, paidPct, handoverPct, dealFees, furnPaid, P, noi, netSalePrice
     );
 
-    value5       = salePrice;
+    value5       = netSalePrice;
     rentYears    = rentalYears;
     totalReturn5 = totalROI;
     annualized5  = annualizedROI;
+    cumIncome    = rentalIncome;
+    exitCostsOut = exitCosts;
 
     offplan = {
       horizonYears, handoverMos, toHandoverYrs, paidPct, handoverPct,
       growthPre, growthPost, planError, preHandoverExit,
-      valueAtHandover, salePrice, rentalYears, rentalIncome,
+      valueAtHandover, salePrice, netSalePrice, exitCosts, exitCostsPct, rentalYears, rentalIncome, rentIndexPct, vacancyMonths,
       dealFees, constructionPaid, handoverPaid, invested,
       capitalGain, totalProfit, totalROI, annualizedROI, irrAnnual,
     };
@@ -855,14 +892,21 @@ function calc() {
     value5          = P*Math.pow(1+growth/100, horizYrs);
     rentYears       = horizYrs;
     const baseInvest= cashInvested;
-    totalReturn5    = baseInvest>0 ? (value5-entry+cashFlow*rentYears)/baseInvest*100 : 0;
+    exitCostsOut    = value5 * exitCostsPct / 100;
+    const r_idx     = rentIndexPct / 100;
+    cumIncome       = r_idx > 0
+      ? noi * (Math.pow(1 + r_idx, horizYrs) - 1) / r_idx
+      : noi * horizYrs;
+    const cumCashFlow = cumIncome - debtService * horizYrs;
+    totalReturn5    = baseInvest>0 ? (value5-exitCostsOut-entry+cumCashFlow)/baseInvest*100 : 0;
     annualized5     = horizYrs > 0 ? (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/horizYrs)-1)*100 : 0;
   }
 
   return {P,isOff,isMort,isShort,isCom:false,vatEnabled,dld,commission,vat,trustee,oqood,down,loan,mortgageReg,bankFee,valuation,
     monthlyPayment,debtService,dealCosts,entry,cashInvested,grossRevenue,effRevenue,operatorFee,util,
     serviceCharge,mgmt,opex,noi,cashFlow,grossYield,netYield,coc,payback,
-    value5,rentYears,totalReturn5,annualized5,horizYrs,furn,offplan};
+    value5,rentYears,totalReturn5,annualized5,horizYrs,furn,offplan,
+    exitCostsPct, exitCosts: exitCostsOut, rentIndexPct, vacancyMonths, cumIncome};
 }
 
 function calcCommercial() {
@@ -938,6 +982,8 @@ function calcCommercial() {
 
   let value5, totalReturn5, annualized5, offplan = null;
   const horizYrs = Math.max(0.1, num('horizonYears'));
+  const exitCostsPct = Math.max(0, num('exitCostsPct'));
+  let exitCostsOut = 0, cumH = 0;
 
   if (isOff) {
     const handoverMos    = num('handoverMonths');
@@ -961,21 +1007,25 @@ function calcCommercial() {
     const constructionPaid = toHandoverMosInt > 0 ? P * (paidPct / 100) * constrMosPaid / toHandoverMosInt : 0;
     const handoverPaid = preHandoverExit ? 0 : P * (handoverPct / 100);
     const invested     = constructionPaid + handoverPaid + dealFees + fitoutInEntry;
-    const capitalGain  = salePrice - P;
+    const exitCosts    = salePrice * exitCostsPct / 100;
+    const netSalePrice = salePrice - exitCosts;
+    const capitalGain  = netSalePrice - P;
     const totalProfit  = capitalGain + rentalIncome;
     const totalROI     = invested > 0 ? totalProfit / invested * 100 : 0;
     const annualizedROI = horizYrs > 0 ? (Math.pow(1 + Math.max(totalROI, -99) / 100, 1 / horizYrs) - 1) * 100 : 0;
-    const irrAnnual = computeOffplanIRRNew(toHandoverMosInt, horizonMos, paidPct, handoverPct, dealFees, fitoutInEntry, P, noi, salePrice);
-    value5 = salePrice; totalReturn5 = totalROI; annualized5 = annualizedROI;
+    const irrAnnual = computeOffplanIRRNew(toHandoverMosInt, horizonMos, paidPct, handoverPct, dealFees, fitoutInEntry, P, noi, netSalePrice);
+    value5 = netSalePrice; totalReturn5 = totalROI; annualized5 = annualizedROI;
+    exitCostsOut = exitCosts;
     offplan = { horizonYears:horizYrs, handoverMos, toHandoverYrs, paidPct, handoverPct,
-      growthPre, growthPost, planError, preHandoverExit, valueAtHandover, salePrice,
+      growthPre, growthPost, planError, preHandoverExit, valueAtHandover, salePrice, netSalePrice, exitCosts, exitCostsPct,
       rentalYears, rentalIncome, dealFees, constructionPaid, handoverPaid, invested,
       capitalGain, totalProfit, totalROI, annualizedROI, irrAnnual };
   } else {
     const growth = num('growth');
     value5 = P * Math.pow(1 + growth / 100, horizYrs);
-    const cumH  = cumNOI(horizYrs);
-    totalReturn5 = entry > 0 ? (value5 - entry + cumH) / entry * 100 : 0;
+    cumH  = cumNOI(horizYrs);
+    exitCostsOut = value5 * exitCostsPct / 100;
+    totalReturn5 = entry > 0 ? (value5 - exitCostsOut - entry + cumH) / entry * 100 : 0;
     annualized5  = horizYrs > 0 ? (Math.pow(1 + Math.max(totalReturn5, -99) / 100, 1 / horizYrs) - 1) * 100 : 0;
   }
 
@@ -985,7 +1035,8 @@ function calcCommercial() {
     commRentGross, commRentExVat, vatInRent, vatTransit, effRent, leaseTerm, vacancyMos, occFactor,
     rentFreeMonths, rentGrowthPct, serviceCharge, mgmt, maint, opex, noi, noiYear1, cashFlow: noi,
     grossRevenue: commRentExVat, effRevenue: effRent, grossYield, netYield, coc: netYield,
-    value5, rentYears: horizYrs, totalReturn5, annualized5, horizYrs, furn: 0, offplan };
+    value5, rentYears: horizYrs, totalReturn5, annualized5, horizYrs, furn: 0, offplan,
+    exitCostsPct, exitCosts: exitCostsOut, rentIndexPct: 0, vacancyMonths: 0, cumIncome: cumH };
 }
 
 const row = (l,v,opts={}) =>
@@ -1069,8 +1120,9 @@ function recalc() {
       +(!o.preHandoverExit?row(EN?`  Handover (${fmt(o.handoverPct,o.handoverPct%1===0?0:1)}%)`:`  Handover (${fmt(o.handoverPct,o.handoverPct%1===0?0:1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}):'')
       +row(EN?'  Deal fees':'  Сборы (DLD, Oqood, комиссия)', fmt(o.dealFees)+' AED', {indent:1})
       +row(EN?'Sale price at horizon':'Цена продажи в конце горизонта', fmt(o.salePrice)+' AED')
+      +(o.exitCosts>0?row(EN?`Exit costs (${fmt(o.exitCostsPct,1)}%)`:`Расходы на выход (${fmt(o.exitCostsPct,1)}%)`, '−'+fmt(o.exitCosts)+' AED', {indent:1, color:'var(--red)'}):'')
       +(!o.preHandoverExit?row(EN?`Net rental income (${fmt(o.rentalYears,1)} yrs)`:`Чистый доход от аренды (${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)})`, '+'+fmt(o.rentalIncome)+' AED'):'')
-      +row(EN?'Capital gain':'Прирост капитала', (o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
+      +row(EN?'Capital gain (net)':'Прирост капитала (нетто)', (o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
       +row(EN?'Total profit':'Итоговая прибыль', (o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED', {bold:1})
       +row(EN?'Total ROI':'Совокупный ROI', fmt(o.totalROI,1)+'%', {bold:1, color:'var(--green)'})
       +row(EN?'Avg. annual ROI':'Среднегодовой ROI', fmt(o.annualizedROI,2)+'%')
@@ -1081,8 +1133,9 @@ function recalc() {
       const hFmt = fmt(r.horizYrs, r.horizYrs%1===0?0:1);
       html2 += `<div class="section"><div class="sec-title">${EN?`${hFmt}-Year Horizon · ${growth}%/yr growth`:`Горизонт ${hFmt} ${declYears(r.horizYrs)} · рост ${growth}%/год`}</div>`
       +row(EN?'Projected value':'Прогноз стоимости', fmt(r.value5)+' AED')
-      +row(EN?'Capital gain':'Прирост капитала', '+'+fmt(r.value5-r.entry)+' AED')
-      +row(EN?`NOI income (${hFmt} yrs, cumulative)`:`Накопленный NOI (${hFmt} ${declYears(r.horizYrs)})`, '+'+fmt(r.noi*r.horizYrs)+' AED')
+      +(r.exitCosts>0?row(EN?`Exit costs (${fmt(r.exitCostsPct,1)}%)`:`Расходы на выход (${fmt(r.exitCostsPct,1)}%)`, '−'+fmt(r.exitCosts)+' AED', {indent:1, color:'var(--red)'}):'')
+      +row(EN?'Capital gain (net)':'Прирост капитала (нетто)', (r.value5-r.exitCosts-r.entry>=0?'+':'')+fmt(r.value5-r.exitCosts-r.entry)+' AED')
+      +row(EN?`NOI income (${hFmt} yrs, cumulative)`:`Накопленный NOI (${hFmt} ${declYears(r.horizYrs)})`, '+'+fmt(r.cumIncome)+' AED')
       +row(EN?'Total ROI':'Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
       +row(EN?'Avg. annual ROI':'Среднегодовой ROI', fmt(r.annualized5,2)+'%')
       +`</div>`;
@@ -1128,7 +1181,8 @@ function recalc() {
   + `</div>
 
   <div class="section"><div class="sec-title">${r.isOff ? (EN ? 'Operating Cash Flow post-handover (NOI)' : 'Операционный поток после handover (NOI)') : (EN ? 'Annual Cash Flow' : 'Годовой денежный поток')}</div>`
-  + row(revLabel, fmt(r.effRevenue)+' AED')
+  + row(revLabel, fmt(r.isShort ? r.effRevenue : r.grossRevenue)+' AED')
+  + (!r.isShort && r.vacancyMonths > 0 ? row(EN ? `Vacancy (${fmt(r.vacancyMonths,1)} ${r.vacancyMonths===1?'month':'months'}/yr)` : `Вакантность (${fmt(r.vacancyMonths,1)} ${declMonths(r.vacancyMonths)}/год)`, '−'+fmt(r.grossRevenue - r.effRevenue)+' AED', {indent:1, color:'var(--red)'}) : '')
   + row(EN ? 'Service charge' : 'Service charge', '−'+fmt(r.serviceCharge)+' AED', {indent:1, color:'var(--red)'})
   + (r.isShort ? row(EN ? `Operator ${num('operatorPct')}%` : `Оператор ${num('operatorPct')}%`, '−'+fmt(r.operatorFee)+' AED', {indent:1, color:'var(--red)'})
                + row(EN ? 'DEWA + internet' : 'DEWA + интернет', '−'+fmt(r.util)+' AED', {indent:1, color:'var(--red)'}) : '')
@@ -1167,8 +1221,9 @@ function recalc() {
     + (!o.preHandoverExit ? row(EN ? `  Handover payment (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)` : `  Платёж на handover (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}) : '')
     + row(EN ? '  Deal fees (DLD, Oqood, commission)' : '  Сборы (DLD, Oqood, комиссия)', fmt(o.dealFees)+' AED', {indent:1})
     + row(EN ? 'Sale price at horizon end' : 'Цена продажи в конце горизонта', fmt(o.salePrice)+' AED')
-    + (!o.preHandoverExit ? row(EN ? `Net rental income (${fmt(o.rentalYears,1)} yrs)` : `Чистый доход от аренды (${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)})`, '+'+fmt(o.rentalIncome)+' AED') : '')
-    + row(EN ? 'Capital gain' : 'Прирост капитала', (o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
+    + (o.exitCosts > 0 ? row(EN ? `Exit costs (${fmt(o.exitCostsPct,1)}%)` : `Расходы на выход (${fmt(o.exitCostsPct,1)}%)`, '−'+fmt(o.exitCosts)+' AED', {indent:1, color:'var(--red)'}) : '')
+    + (!o.preHandoverExit ? row(EN ? `Net rental income (${fmt(o.rentalYears,1)} yrs${o.rentIndexPct>0?', idx '+fmt(o.rentIndexPct,1)+'%/yr':''})` : `Чистый доход от аренды (${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)}${o.rentIndexPct>0?', инд. '+fmt(o.rentIndexPct,1)+'%/год':''})`, '+'+fmt(o.rentalIncome)+' AED') : '')
+    + row(EN ? 'Capital gain (net)' : 'Прирост капитала (нетто)', (o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
     + row(EN ? 'Total profit' : 'Итоговая прибыль', (o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED', {bold:1})
     + row(EN ? 'Total ROI' : 'Совокупный ROI', fmt(o.totalROI,1)+'%', {bold:1, color:'var(--green)'})
     + row(EN ? 'Avg. annual ROI' : 'Среднегодовой ROI', fmt(o.annualizedROI,2)+'%')
@@ -1178,8 +1233,9 @@ function recalc() {
     const hFmt = fmt(r.horizYrs, r.horizYrs%1===0?0:1);
     html += `<div class="section"><div class="sec-title">${EN ? `${hFmt}-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт ${hFmt} ${declYears(r.horizYrs)} · рост ${num('growth')}%/год`}</div>`
     + row(EN ? `Value in ${hFmt} years` : `Стоимость через ${hFmt} ${declYears(r.horizYrs)}`, fmt(r.value5)+' AED')
-    + row(EN ? 'Capital gain' : 'Прирост капитала', '+'+fmt(r.value5-r.entry)+' AED')
-    + row(EN ? `Rental income (${hFmt} yrs)` : `Аренда за ${hFmt} ${declYears(r.horizYrs)}`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
+    + (r.exitCosts > 0 ? row(EN ? `Exit costs (${fmt(r.exitCostsPct,1)}%)` : `Расходы на выход (${fmt(r.exitCostsPct,1)}%)`, '−'+fmt(r.exitCosts)+' AED', {indent:1, color:'var(--red)'}) : '')
+    + row(EN ? 'Capital gain (net)' : 'Прирост капитала (нетто)', (r.value5-r.exitCosts-r.entry>=0?'+':'')+fmt(r.value5-r.exitCosts-r.entry)+' AED')
+    + row(EN ? `Rental income (${hFmt} yrs${r.rentIndexPct>0?', idx '+fmt(r.rentIndexPct,1)+'%/yr':''})` : `Аренда за ${hFmt} ${declYears(r.horizYrs)}${r.rentIndexPct>0?', инд. '+fmt(r.rentIndexPct,1)+'%/год':''}`, '+'+fmt(r.cumIncome)+' AED')
     + row(EN ? 'Total ROI' : 'Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
     + row(EN ? '≈ annualized' : '≈ годовых', fmt(r.annualized5,2)+'%')
     + `</div>`;
@@ -1354,8 +1410,9 @@ function buildReport() {
     + (!o.preHandoverExit ? row(EN ? `Handover payment (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)` : `Платёж на handover (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}) : '')
     + row(EN ? 'Deal fees (DLD, Oqood, commission)' : 'Сборы (DLD, Oqood, комиссия)', fmt(o.dealFees)+' AED', {indent:1})
     + row(EN ? 'Sale price at horizon end' : 'Цена продажи в конце горизонта', fmt(o.salePrice)+' AED')
-    + (!o.preHandoverExit ? row(EN ? `Net rental income (${fmt(o.rentalYears,1)} yrs)` : `Чистый доход от аренды (${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)})`, '+'+fmt(o.rentalIncome)+' AED') : '')
-    + row(EN ? 'Capital gain' : 'Прирост капитала', (o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
+    + (o.exitCosts > 0 ? row(EN ? `Exit costs (${fmt(o.exitCostsPct,1)}%)` : `Расходы на выход (${fmt(o.exitCostsPct,1)}%)`, '−'+fmt(o.exitCosts)+' AED', {indent:1, color:'var(--red)'}) : '')
+    + (!o.preHandoverExit ? row(EN ? `Net rental income (${fmt(o.rentalYears,1)} yrs${o.rentIndexPct>0?', idx '+fmt(o.rentIndexPct,1)+'%/yr':''})` : `Чистый доход от аренды (${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)}${o.rentIndexPct>0?', инд. '+fmt(o.rentIndexPct,1)+'%/год':''})`, '+'+fmt(o.rentalIncome)+' AED') : '')
+    + row(EN ? 'Capital gain (net)' : 'Прирост капитала (нетто)', (o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
     + row(EN ? 'Total profit' : 'Итоговая прибыль', (o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED', {bold:1})
     + row(EN ? 'Total ROI' : 'Совокупный ROI', fmt(o.totalROI,1)+'%', {bold:1, color:'var(--green)'})
     + row(EN ? 'Avg. annual ROI' : 'Среднегодовой ROI', fmt(o.annualizedROI,2)+'%')
@@ -1365,8 +1422,9 @@ function buildReport() {
     const hFmtR = fmt(r.horizYrs, r.horizYrs%1===0?0:1);
     html += `<div class="rep-section"><h3>${EN ? `${hFmtR}-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт ${hFmtR} ${declYears(r.horizYrs)} · рост ${num('growth')}%/год`}</h3>`
     + row(EN ? `Value in ${hFmtR} years` : `Стоимость через ${hFmtR} ${declYears(r.horizYrs)}`, fmt(r.value5)+' AED')
-    + row(EN ? 'Capital gain' : 'Прирост капитала', '+'+fmt(r.value5-r.entry)+' AED')
-    + row(EN ? `Rental income (${hFmtR} yrs)` : `Доход от аренды (${hFmtR} ${declYears(r.horizYrs)})`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
+    + (r.exitCosts > 0 ? row(EN ? `Exit costs (${fmt(r.exitCostsPct,1)}%)` : `Расходы на выход (${fmt(r.exitCostsPct,1)}%)`, '−'+fmt(r.exitCosts)+' AED', {indent:1, color:'var(--red)'}) : '')
+    + row(EN ? 'Capital gain (net)' : 'Прирост капитала (нетто)', (r.value5-r.exitCosts-r.entry>=0?'+':'')+fmt(r.value5-r.exitCosts-r.entry)+' AED')
+    + row(EN ? `Rental income (${hFmtR} yrs${r.rentIndexPct>0?', idx '+fmt(r.rentIndexPct,1)+'%/yr':''})` : `Доход от аренды (${hFmtR} ${declYears(r.horizYrs)}${r.rentIndexPct>0?', инд. '+fmt(r.rentIndexPct,1)+'%/год':''})`, '+'+fmt(r.cumIncome)+' AED')
     + row(EN ? 'Total ROI' : 'Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}%/${EN?'yr':'год'}`, {bold:1, color:'var(--green)'})
     + `</div>`;
   }
@@ -1507,8 +1565,8 @@ function collectSnapshot() {
   const inputs = {};
   ['price','area','dldPct','commPct','furnishing','rent','adr','occShort',
    'operatorPct','utilities','scRate','maintenance','mgmtPct','growth',
-   'downPct','ratePct','termYears','horizonYears','handoverMonths','paidPct','handoverPct',
-   'growthPre','growthPost'].forEach(id => {
+   'downPct','ratePct','termYears','horizonYears','exitCostsPct','handoverMonths','paidPct','handoverPct',
+   'growthPre','growthPost','rentIndexPct','vacancyMonths'].forEach(id => {
     const el = document.getElementById(id);
     if (el) inputs[id] = el.value;
   });
@@ -1555,8 +1613,8 @@ function loadHistoryEntry(id) {
   const inp = snap.inputs;
   ['price','area','dldPct','commPct','furnishing','rent','adr','occShort',
    'operatorPct','utilities','scRate','maintenance','mgmtPct','growth',
-   'downPct','ratePct','termYears','horizonYears','handoverMonths','paidPct','handoverPct',
-   'growthPre','growthPost'].forEach(id => {
+   'downPct','ratePct','termYears','horizonYears','exitCostsPct','handoverMonths','paidPct','handoverPct',
+   'growthPre','growthPost','rentIndexPct','vacancyMonths'].forEach(id => {
     const el = document.getElementById(id);
     if (el && inp[id] !== undefined) el.value = inp[id];
   });
