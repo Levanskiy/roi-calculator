@@ -211,19 +211,17 @@
             <button data-v="included" data-i18n="comm_deal_included" onclick="setMode('commVatDeal','included')">Включён в цену</button>
           </div>
         </div>
+        <div class="field" id="f-horizon">
+          <div class="f-label" data-i18n="lbl_horizonYears">Горизонт удержания</div>
+          <div class="f-box"><input id="horizonYears" inputmode="decimal" value="5" oninput="recalc()"><span class="suffix" data-i18n="years_unit">лет</span></div>
+        </div>
       </div>
 
       <div class="section hidden" id="sec-offplan">
         <div class="sec-title" data-i18n="sec_offplan">Офф-план: план платежей</div>
-        <div class="cols2">
-          <div class="field">
-            <div class="f-label" data-i18n="lbl_horizonYears">Горизонт удержания</div>
-            <div class="f-box"><input id="horizonYears" inputmode="decimal" value="5" oninput="recalc()"><span class="suffix" data-i18n="years_unit">лет</span></div>
-          </div>
-          <div class="field">
-            <div class="f-label" data-i18n="lbl_handoverMonths">До handover, мес.</div>
-            <div class="f-box"><input id="handoverMonths" inputmode="decimal" value="24" oninput="recalc()"><span class="suffix" data-i18n="months_unit">мес.</span></div>
-          </div>
+        <div class="field">
+          <div class="f-label" data-i18n="lbl_handoverMonths">До handover, мес.</div>
+          <div class="f-box"><input id="handoverMonths" inputmode="decimal" value="24" oninput="recalc()"><span class="suffix" data-i18n="months_unit">мес.</span></div>
         </div>
         <div class="cols2">
           <div class="field">
@@ -793,10 +791,11 @@ function calc() {
   const coc        = cashInvested>0 ? cashFlow/cashInvested*100 : 0;
   const payback    = cashFlow>0 ? cashInvested/cashFlow : Infinity;
 
-  let value5, rentYears, totalReturn5, annualized5, offplan = null;
+  let value5, rentYears, totalReturn5, annualized5, horizYrs = 5, offplan = null;
 
   if (isOff) {
     const horizonYears  = Math.max(0.1, num('horizonYears'));
+    horizYrs = horizonYears;
     const handoverMos   = num('handoverMonths');
     const paidPct       = num('paidPct');
     const handoverPct   = num('handoverPct');
@@ -852,17 +851,18 @@ function calc() {
     };
   } else {
     const growth    = num('growth');
-    value5          = P*Math.pow(1+growth/100, 5);
-    rentYears       = 5;
+    horizYrs        = Math.max(0.1, num('horizonYears'));
+    value5          = P*Math.pow(1+growth/100, horizYrs);
+    rentYears       = horizYrs;
     const baseInvest= cashInvested;
     totalReturn5    = baseInvest>0 ? (value5-entry+cashFlow*rentYears)/baseInvest*100 : 0;
-    annualized5     = (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/5)-1)*100;
+    annualized5     = horizYrs > 0 ? (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/horizYrs)-1)*100 : 0;
   }
 
   return {P,isOff,isMort,isShort,isCom:false,vatEnabled,dld,commission,vat,trustee,oqood,down,loan,mortgageReg,bankFee,valuation,
     monthlyPayment,debtService,dealCosts,entry,cashInvested,grossRevenue,effRevenue,operatorFee,util,
     serviceCharge,mgmt,opex,noi,cashFlow,grossYield,netYield,coc,payback,
-    value5,rentYears,totalReturn5,annualized5,furn,offplan};
+    value5,rentYears,totalReturn5,annualized5,horizYrs,furn,offplan};
 }
 
 function calcCommercial() {
@@ -937,7 +937,7 @@ function calcCommercial() {
   }
 
   let value5, totalReturn5, annualized5, offplan = null;
-  const horizYrs = isOff ? Math.max(0.1, num('horizonYears')) : 5;
+  const horizYrs = Math.max(0.1, num('horizonYears'));
 
   if (isOff) {
     const handoverMos    = num('handoverMonths');
@@ -973,10 +973,10 @@ function calcCommercial() {
       capitalGain, totalProfit, totalROI, annualizedROI, irrAnnual };
   } else {
     const growth = num('growth');
-    value5 = P * Math.pow(1 + growth / 100, 5);
-    const cum5  = cumNOI(5);
-    totalReturn5 = entry > 0 ? (value5 - P + cum5) / entry * 100 : 0;
-    annualized5  = (Math.pow(1 + Math.max(totalReturn5, -99) / 100, 1 / 5) - 1) * 100;
+    value5 = P * Math.pow(1 + growth / 100, horizYrs);
+    const cumH  = cumNOI(horizYrs);
+    totalReturn5 = entry > 0 ? (value5 - entry + cumH) / entry * 100 : 0;
+    annualized5  = horizYrs > 0 ? (Math.pow(1 + Math.max(totalReturn5, -99) / 100, 1 / horizYrs) - 1) * 100 : 0;
   }
 
   return { P, isOff, isMort: false, isShort: false, isCom: true, vatEnabled: false,
@@ -985,7 +985,7 @@ function calcCommercial() {
     commRentGross, commRentExVat, vatInRent, vatTransit, effRent, leaseTerm, vacancyMos, occFactor,
     rentFreeMonths, rentGrowthPct, serviceCharge, mgmt, maint, opex, noi, noiYear1, cashFlow: noi,
     grossRevenue: commRentExVat, effRevenue: effRent, grossYield, netYield, coc: netYield,
-    value5, rentYears: 5, totalReturn5, annualized5, furn: 0, offplan };
+    value5, rentYears: horizYrs, totalReturn5, annualized5, horizYrs, furn: 0, offplan };
 }
 
 const row = (l,v,opts={}) =>
@@ -1078,10 +1078,11 @@ function recalc() {
       +`</div>`;
     } else {
       const growth = num('growth');
-      html2 += `<div class="section"><div class="sec-title">${EN?`5-Year Horizon · ${growth}%/yr growth`:`Горизонт 5 лет · рост ${growth}%/год`}</div>`
+      const hFmt = fmt(r.horizYrs, r.horizYrs%1===0?0:1);
+      html2 += `<div class="section"><div class="sec-title">${EN?`${hFmt}-Year Horizon · ${growth}%/yr growth`:`Горизонт ${hFmt} ${declYears(r.horizYrs)} · рост ${growth}%/год`}</div>`
       +row(EN?'Projected value':'Прогноз стоимости', fmt(r.value5)+' AED')
-      +row(EN?'Capital gain':'Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
-      +row(EN?'NOI income (5 yrs, cumulative)':'Накопленный NOI (5 лет)', '+'+fmt(r.noi*5)+' AED')
+      +row(EN?'Capital gain':'Прирост капитала', '+'+fmt(r.value5-r.entry)+' AED')
+      +row(EN?`NOI income (${hFmt} yrs, cumulative)`:`Накопленный NOI (${hFmt} ${declYears(r.horizYrs)})`, '+'+fmt(r.noi*r.horizYrs)+' AED')
       +row(EN?'Total ROI':'Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
       +row(EN?'Avg. annual ROI':'Среднегодовой ROI', fmt(r.annualized5,2)+'%')
       +`</div>`;
@@ -1174,10 +1175,11 @@ function recalc() {
     + row(EN ? `IRR — real return on deferred payments <button class="tip-btn" onclick="showTip('irr',event)">?</button>` : `IRR — реальная доходность с учётом рассрочки <button class="tip-btn" onclick="showTip('irr',event)">?</button>`, o.irrAnnual===null ? '—' : fmt(o.irrAnnual,1)+'%', {bold:1, color:'var(--green)'})
     + `</div>`;
   } else {
-    html += `<div class="section"><div class="sec-title">${EN ? `5-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт 5 лет · рост ${num('growth')}%/год`}</div>`
-    + row(EN ? 'Value in 5 years' : 'Стоимость через 5 лет', fmt(r.value5)+' AED')
+    const hFmt = fmt(r.horizYrs, r.horizYrs%1===0?0:1);
+    html += `<div class="section"><div class="sec-title">${EN ? `${hFmt}-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт ${hFmt} ${declYears(r.horizYrs)} · рост ${num('growth')}%/год`}</div>`
+    + row(EN ? `Value in ${hFmt} years` : `Стоимость через ${hFmt} ${declYears(r.horizYrs)}`, fmt(r.value5)+' AED')
     + row(EN ? 'Capital gain' : 'Прирост капитала', '+'+fmt(r.value5-r.entry)+' AED')
-    + row(EN ? `Rental income (${fmt(r.rentYears,1)} yrs)` : `Аренда за ${fmt(r.rentYears,1)} ${declYears(r.rentYears)}`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
+    + row(EN ? `Rental income (${hFmt} yrs)` : `Аренда за ${hFmt} ${declYears(r.horizYrs)}`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
     + row(EN ? 'Total ROI' : 'Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
     + row(EN ? '≈ annualized' : '≈ годовых', fmt(r.annualized5,2)+'%')
     + `</div>`;
@@ -1218,7 +1220,7 @@ function buildReport() {
     <div class="kpis">
       <div class="kpi"><div class="l">${EN?'Net Yield':'Чистая доходность'}</div><div class="v">${fmt(r.netYield,2)}%</div></div>
       <div class="kpi"><div class="l">${EN?'Gross Yield':'Валовая доходность'}</div><div class="v">${fmt(r.grossYield,2)}%</div></div>
-      <div class="kpi"><div class="l">${r.isOff?(EN?`${r.offplan.horizonYears}-yr ROI`:`ROI за ${r.offplan.horizonYears} лет`):(EN?'5-yr ROI':'ROI за 5 лет')}</div><div class="v">${fmt(r.totalReturn5,1)}%</div></div>
+      <div class="kpi"><div class="l">${EN?`${fmt(r.horizYrs,r.horizYrs%1===0?0:1)}-yr ROI`:`ROI за ${fmt(r.horizYrs,r.horizYrs%1===0?0:1)} ${declYears(r.horizYrs)}`}</div><div class="v">${fmt(r.totalReturn5,1)}%</div></div>
     </div>
     <div class="rep-section"><h3>${EN?'Entry Cost':'Стоимость входа'}</h3>`
     + row(EN?'Property price':'Цена объекта', fmt(r.P)+' AED')
@@ -1262,10 +1264,11 @@ function buildReport() {
       +row(EN?'IRR — real return on deferred payments':'IRR — реальная доходность с учётом рассрочки',o.irrAnnual===null?'—':fmt(o.irrAnnual,1)+'%',{bold:1,color:'var(--green)'})
       +`</div>`;
     } else {
-      rHtml += `<div class="rep-section"><h3>${EN?`5-Year Horizon · ${num('growth')}%/yr growth`:`Горизонт 5 лет · рост ${num('growth')}%/год`}</h3>`
+      const hFmtC = fmt(r.horizYrs, r.horizYrs%1===0?0:1);
+      rHtml += `<div class="rep-section"><h3>${EN?`${hFmtC}-Year Horizon · ${num('growth')}%/yr growth`:`Горизонт ${hFmtC} ${declYears(r.horizYrs)} · рост ${num('growth')}%/год`}</h3>`
       +row(EN?'Projected value':'Прогноз стоимости',fmt(r.value5)+' AED')
-      +row(EN?'Capital gain':'Прирост капитала','+'+fmt(r.value5-r.P)+' AED')
-      +row(EN?'Cumulative NOI (5 yrs)':'Накопленный NOI (5 лет)','+'+fmt(r.noi*5)+' AED')
+      +row(EN?'Capital gain':'Прирост капитала','+'+fmt(r.value5-r.entry)+' AED')
+      +row(EN?`Cumulative NOI (${hFmtC} yrs)`:`Накопленный NOI (${hFmtC} ${declYears(r.horizYrs)})`,'+'+fmt(r.noi*r.horizYrs)+' AED')
       +row(EN?'Total ROI':'Совокупный ROI',`${fmt(r.totalReturn5,1)}%`,{bold:1,color:'var(--green)'})
       +row(EN?'Avg. annual ROI':'Среднегодовой ROI',fmt(r.annualized5,2)+'%')
       +`</div>`;
@@ -1305,7 +1308,7 @@ function buildReport() {
   <div class="kpis">
     <div class="kpi"><div class="l">${EN ? 'Net Yield' : 'Чистая доходность'}</div><div class="v">${fmt(r.netYield,2)}%</div></div>
     <div class="kpi"><div class="l">${r.isMort ? 'Cash-on-cash' : (EN ? 'Gross Yield' : 'Валовая доходность')}</div><div class="v">${fmt(r.isMort?r.coc:r.grossYield,2)}%</div></div>
-    <div class="kpi"><div class="l">${r.isOff ? (EN ? `${r.offplan.horizonYears}-yr ROI` : `ROI за ${r.offplan.horizonYears} лет`) : (EN ? '5-yr ROI' : 'ROI за 5 лет')}</div><div class="v">${fmt(r.totalReturn5,1)}%</div></div>
+    <div class="kpi"><div class="l">${EN?`${fmt(r.horizYrs,r.horizYrs%1===0?0:1)}-yr ROI`:`ROI за ${fmt(r.horizYrs,r.horizYrs%1===0?0:1)} ${declYears(r.horizYrs)}`}</div><div class="v">${fmt(r.totalReturn5,1)}%</div></div>
   </div>
   <div class="rep-section"><h3>${EN ? 'Entry Cost' : 'Вход в сделку'}</h3>`
   + row(EN ? 'Property price' : 'Цена объекта', fmt(r.P)+' AED')
@@ -1359,10 +1362,11 @@ function buildReport() {
     + row(EN ? `IRR — real return on deferred payments <button class="tip-btn" onclick="showTip('irr',event)">?</button>` : `IRR — реальная доходность с учётом рассрочки <button class="tip-btn" onclick="showTip('irr',event)">?</button>`, o.irrAnnual===null ? '—' : fmt(o.irrAnnual,1)+'%', {bold:1, color:'var(--green)'})
     + `</div>`;
   } else {
-    html += `<div class="rep-section"><h3>${EN ? `5-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт 5 лет · рост ${num('growth')}%/год`}</h3>`
-    + row(EN ? 'Projected value' : 'Прогноз стоимости', fmt(r.value5)+' AED')
+    const hFmtR = fmt(r.horizYrs, r.horizYrs%1===0?0:1);
+    html += `<div class="rep-section"><h3>${EN ? `${hFmtR}-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт ${hFmtR} ${declYears(r.horizYrs)} · рост ${num('growth')}%/год`}</h3>`
+    + row(EN ? `Value in ${hFmtR} years` : `Стоимость через ${hFmtR} ${declYears(r.horizYrs)}`, fmt(r.value5)+' AED')
     + row(EN ? 'Capital gain' : 'Прирост капитала', '+'+fmt(r.value5-r.entry)+' AED')
-    + row(EN ? `Rental income (${fmt(r.rentYears,1)} yrs)` : `Доход от аренды (${fmt(r.rentYears,1)} ${declYears(r.rentYears)})`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
+    + row(EN ? `Rental income (${hFmtR} yrs)` : `Доход от аренды (${hFmtR} ${declYears(r.horizYrs)})`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
     + row(EN ? 'Total ROI' : 'Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}%/${EN?'yr':'год'}`, {bold:1, color:'var(--green)'})
     + `</div>`;
   }
@@ -1519,6 +1523,7 @@ function collectSnapshot() {
       noi: r.noi, cashFlow: r.cashFlow,
       entry: r.entry, cashInvested: r.cashInvested,
       value5: r.value5, totalReturn5: r.totalReturn5, annualized5: r.annualized5,
+      horizYrs: r.horizYrs,
     },
     inputs
   };
@@ -1695,7 +1700,7 @@ function renderHistory() {
         </div>
       </div>
       <div class="hist-foot">
-        <div class="hist-roi">${EN?'5-yr ROI':'ROI 5 лет'}: ${fmtN(m.totalReturn5,1)}% · ≈${fmtN(m.annualized5,2)}%/${EN?'yr':'год'}</div>
+        <div class="hist-roi">${(()=>{const h=m.horizYrs||5,hf=fmtN(h,h%1===0?0:1);return EN?`${hf}-yr ROI`:`ROI за ${hf} ${declYears(h)}`;})()}: ${fmtN(m.totalReturn5,1)}% · ≈${fmtN(m.annualized5,2)}%/${EN?'yr':'год'}</div>
         <button class="btn" style="padding:7px 14px;font-size:13px" onclick="loadHistoryEntry(${snap.id})">${t('hist_load')}</button>
       </div>
     </div>`;
