@@ -146,9 +146,18 @@
     <div>
       <div class="section">
         <div class="sec-title" data-i18n="sec_scenario">Сценарий</div>
+        <div class="toggle" id="tg-type">
+          <button data-v="residential" class="on" data-i18n="mode_residential" onclick="setMode('type','residential')">Жилая</button>
+          <button data-v="commercial" data-i18n="mode_commercial" onclick="setMode('type','commercial')">Коммерческая</button>
+        </div>
         <div class="toggle" id="tg-prop">
           <button data-v="ready" class="on" data-i18n="mode_ready" onclick="setMode('prop','ready')">Готовый</button>
           <button data-v="offplan" data-i18n="mode_offplan" onclick="setMode('prop','offplan')">Офф-план</button>
+        </div>
+        <div class="toggle hidden" id="tg-comm">
+          <button data-v="office" class="on" data-i18n="comm_office" onclick="setMode('comm','office')">Офис</button>
+          <button data-v="retail" data-i18n="comm_retail" onclick="setMode('comm','retail')">Ритейл</button>
+          <button data-v="warehouse" data-i18n="comm_warehouse" onclick="setMode('comm','warehouse')">Склад</button>
         </div>
         <div class="toggle" id="tg-fin">
           <button data-v="cash" class="on" data-i18n="mode_cash" onclick="setMode('fin','cash')">Наличные</button>
@@ -189,9 +198,17 @@
               <span data-i18n="lbl_vat_check">VAT 5%</span>
             </label>
           </div>
-          <div class="field">
+          <div class="field" id="f-furnishing">
             <div class="f-label" data-i18n="lbl_furnishing">Меблировка</div>
             <div class="f-box"><input id="furnishing" inputmode="decimal" value="0" oninput="recalc()"><span class="suffix">AED</span></div>
+          </div>
+        </div>
+        <!-- Commercial: VAT on deal -->
+        <div class="field hidden" id="f-comm-vat-deal">
+          <div class="f-label" data-i18n="lbl_comm_vat_deal">VAT 5% на сделку</div>
+          <div class="toggle" id="tg-commVatDeal" style="margin-bottom:0">
+            <button data-v="ontop" class="on" data-i18n="comm_deal_ontop" onclick="setMode('commVatDeal','ontop')">Начисляется сверху</button>
+            <button data-v="included" data-i18n="comm_deal_included" onclick="setMode('commVatDeal','included')">Включён в цену</button>
           </div>
         </div>
       </div>
@@ -291,6 +308,79 @@
         </div>
       </div>
 
+      <!-- ── Commercial: Rent ────────────────────────────── -->
+      <div class="section hidden" id="sec-comm-rent">
+        <div class="sec-title" data-i18n="sec_comm_rent">Аренда</div>
+        <div class="toggle" id="tg-commRentMode" style="margin-bottom:10px">
+          <button data-v="sqft" class="on" data-i18n="comm_rent_sqft" onclick="setMode('commRentMode','sqft')">AED/sqft/год</button>
+          <button data-v="total" data-i18n="comm_rent_total" onclick="setMode('commRentMode','total')">Итого AED/год</button>
+        </div>
+        <div class="cols2" id="f-comm-rent-sqft">
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_comm_rent_sqft">Ставка аренды</div>
+            <div class="f-box"><input id="commRentPerSqft" inputmode="decimal" value="120" oninput="recalc()"><span class="suffix">AED/sqft</span></div>
+          </div>
+          <div class="field">
+            <div class="f-label" style="font-size:12px;color:var(--sub);margin-bottom:5px">= Итого AED/год</div>
+            <div class="f-box" style="background:#F4F5F2"><input id="commRentSqftCalc" readonly style="color:var(--sub)"><span class="suffix">AED</span></div>
+          </div>
+        </div>
+        <div class="field hidden" id="f-comm-rent-total">
+          <div class="f-label" data-i18n="lbl_comm_rent_total">Аренда в год</div>
+          <div class="f-box"><input id="commRentTotal" inputmode="decimal" value="500000" oninput="recalc()"><span class="suffix">AED</span></div>
+        </div>
+        <div class="field">
+          <div class="f-label" data-i18n="lbl_comm_vat_in_rent">VAT 5% в аренде</div>
+          <div class="toggle" id="tg-commRentVat" style="margin-bottom:0">
+            <button data-v="ontop" class="on" data-i18n="comm_vat_ontop" onclick="setMode('commRentVat','ontop')">Начисляется сверху</button>
+            <button data-v="included" data-i18n="comm_vat_included" onclick="setMode('commRentVat','included')">Включён</button>
+          </div>
+          <div class="f-hint">NOI считается от суммы без VAT — VAT уходит в FTA</div>
+        </div>
+        <div class="cols2">
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_comm_rent_free">Rent-free период</div>
+            <div class="f-box"><input id="commRentFreeMonths" inputmode="decimal" value="3" oninput="recalc()"><span class="suffix" data-i18n="months_unit">мес.</span></div>
+            <div class="f-hint" data-i18n="hint_comm_rent_free">мес. без аренды для fit-out</div>
+          </div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_comm_lease_term">Срок договора</div>
+            <div class="f-box"><input id="commLeaseTerm" inputmode="decimal" value="3" oninput="recalc()"><span class="suffix" data-i18n="years_unit">лет</span></div>
+          </div>
+        </div>
+        <div class="cols2">
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_comm_rent_growth">Рост аренды/год</div>
+            <div class="f-box"><input id="commRentGrowth" inputmode="decimal" value="5" oninput="recalc()"><span class="suffix">%</span></div>
+            <div class="f-hint" data-i18n="hint_comm_rent_growth">прописан в договоре</div>
+          </div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_comm_vacancy">Вакантность</div>
+            <div class="f-box"><input id="commVacancyMonths" inputmode="decimal" value="3" oninput="recalc()"><span class="suffix" data-i18n="months_unit">мес.</span></div>
+            <div class="f-hint" data-i18n="hint_comm_vacancy">мес. простоя при смене</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Commercial: Fit-out ─────────────────────────── -->
+      <div class="section hidden" id="sec-comm-fitout">
+        <div class="sec-title" data-i18n="sec_comm_fitout">Fit-out (отделка)</div>
+        <div class="cols2">
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_comm_fitout_cost">Затраты на fit-out</div>
+            <div class="f-box"><input id="commFitout" inputmode="decimal" value="0" oninput="recalc()"><span class="suffix">AED</span></div>
+          </div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_comm_fitout_who">Оплачивает</div>
+            <div class="toggle" id="tg-commFitoutWho" style="margin-bottom:0">
+              <button data-v="tenant" class="on" data-i18n="comm_fitout_tenant" onclick="setMode('commFitoutWho','tenant')">Арендатор</button>
+              <button data-v="owner" data-i18n="comm_fitout_owner" onclick="setMode('commFitoutWho','owner')">Собственник</button>
+            </div>
+            <div class="f-hint" id="fitoutHint">не включается в вход</div>
+          </div>
+        </div>
+      </div>
+
       <div class="section">
         <div class="sec-title" id="sec-opex-title">Ежегодные расходы и прогноз</div>
         <div class="cols2">
@@ -383,6 +473,22 @@ const TR = {
     pdf_loading:'Готовлю PDF…', pdf_error:'Не удалось создать PDF: ',
     year_unit:'год', months_unit:'мес.', years_unit:'лет', aed_year:'AED/год', aed_month:'AED/мес',
     pc_post:'Post-handover, %', pc_total:'Итого по плану, %',
+    // Commercial
+    mode_residential:'Жилая', mode_commercial:'Коммерческая',
+    comm_office:'Офис', comm_retail:'Ритейл', comm_warehouse:'Склад',
+    sec_comm_rent:'Аренда', lbl_comm_rent_sqft:'Ставка аренды', lbl_comm_rent_total:'Аренда в год',
+    comm_rent_sqft:'AED/sqft/год', comm_rent_total:'Итого AED/год',
+    lbl_comm_vat_in_rent:'VAT 5% в аренде', comm_vat_included:'Включён', comm_vat_ontop:'Начисляется сверху',
+    lbl_comm_rent_free:'Rent-free период', hint_comm_rent_free:'мес. без аренды для fit-out арендатора',
+    lbl_comm_lease_term:'Срок договора', lbl_comm_rent_growth:'Рост аренды/год',
+    hint_comm_rent_growth:'прописан в договоре, обычно 3–5%',
+    lbl_comm_vacancy:'Вакантность', hint_comm_vacancy:'мес. простоя при смене арендатора',
+    sec_comm_fitout:'Fit-out (отделка)', lbl_comm_fitout_cost:'Затраты на fit-out',
+    lbl_comm_fitout_who:'Оплачивает', comm_fitout_owner:'Собственник', comm_fitout_tenant:'Арендатор',
+    hint_comm_fitout_tenant:'не включается в вход',
+    lbl_comm_vat_deal:'VAT 5% на сделку', comm_deal_ontop:'Начисляется сверху', comm_deal_included:'Включён в цену',
+    comm_rent_ex_vat:'Аренда без VAT (доход собственника)', comm_vat_transit:'VAT транзитом → FTA',
+    comm_deal_vat_cost:'VAT на сделку (доп. расход)',
   },
   en: {
     eyebrow:'Dubai Real Estate', h1:'ROI Calculator', btn_report:'Generate Report →',
@@ -416,6 +522,22 @@ const TR = {
     pdf_loading:'Preparing PDF…', pdf_error:'Could not create PDF: ',
     year_unit:'yr', months_unit:'months', years_unit:'yrs', aed_year:'AED/yr', aed_month:'AED/mo',
     pc_post:'Post-handover, %', pc_total:'Payment plan total, %',
+    // Commercial
+    mode_residential:'Residential', mode_commercial:'Commercial',
+    comm_office:'Office', comm_retail:'Retail', comm_warehouse:'Warehouse',
+    sec_comm_rent:'Rental Income', lbl_comm_rent_sqft:'Rental rate', lbl_comm_rent_total:'Annual rent',
+    comm_rent_sqft:'AED/sqft/yr', comm_rent_total:'Total AED/yr',
+    lbl_comm_vat_in_rent:'VAT 5% in rent', comm_vat_included:'Included', comm_vat_ontop:'On top',
+    lbl_comm_rent_free:'Rent-free period', hint_comm_rent_free:'months for tenant fit-out',
+    lbl_comm_lease_term:'Lease term', lbl_comm_rent_growth:'Annual rent growth',
+    hint_comm_rent_growth:'contractual escalation, typically 3–5%',
+    lbl_comm_vacancy:'Vacancy', hint_comm_vacancy:'months between tenants',
+    sec_comm_fitout:'Fit-out', lbl_comm_fitout_cost:'Fit-out cost',
+    lbl_comm_fitout_who:'Paid by', comm_fitout_owner:'Owner', comm_fitout_tenant:'Tenant',
+    hint_comm_fitout_tenant:'not included in entry cost',
+    lbl_comm_vat_deal:'VAT 5% on deal', comm_deal_ontop:'On top of price', comm_deal_included:'Included in price',
+    comm_rent_ex_vat:'Rent ex-VAT (owner income)', comm_vat_transit:'VAT transit → FTA',
+    comm_deal_vat_cost:'VAT on purchase (add. cost)',
   }
 };
 
@@ -446,7 +568,8 @@ function applyLang(lang) {
 function setLang(lang) { applyLang(lang); }
 
 // ─── State ───────────────────────────────────────────────────────────────────
-const M = { prop:'ready', fin:'cash', rent:'long' };
+const M = { type:'residential', prop:'ready', fin:'cash', rent:'long',
+  comm:'office', commVatDeal:'ontop', commRentMode:'sqft', commRentVat:'ontop', commFitoutWho:'tenant' };
 
 const num = id => {
   const el = document.getElementById(id);
@@ -458,31 +581,81 @@ const fmt = (n, dec=0) => new Intl.NumberFormat(LANG === 'en' ? 'en-US' : 'ru-RU
 
 function setMode(key, val) {
   M[key] = val;
-  document.querySelectorAll('#tg-' + key + ' button').forEach(b => b.classList.toggle('on', b.dataset.v === val));
+  const tg = document.getElementById('tg-' + key);
+  if (tg) tg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === val));
+  if (key === 'type' && val === 'commercial') applyCommDefaults(M.comm);
+  if (key === 'comm') applyCommDefaults(val);
   syncVisibility();
   recalc();
 }
 
 function syncVisibility() {
+  const isCom   = M.type === 'commercial';
   const isOff   = M.prop === 'offplan';
-  const isMort  = M.fin === 'mortgage' && !isOff;
-  const isShort = M.rent === 'short';
+  const isMort  = M.fin === 'mortgage' && !isOff && !isCom;
+  const isShort = M.rent === 'short' && !isCom;
 
+  // Type-level
+  document.getElementById('tg-comm').classList.toggle('hidden', !isCom);
+  document.getElementById('tg-fin').classList.toggle('hidden', isOff || isCom);
+  document.getElementById('tg-rent').classList.toggle('hidden', isCom);
+  document.getElementById('f-furnishing').classList.toggle('hidden', isCom);
+  document.getElementById('f-comm-vat-deal').classList.toggle('hidden', !isCom);
+
+  // Residential-only rent sections
+  document.getElementById('sec-long').classList.toggle('hidden', isShort || isCom);
+  document.getElementById('sec-short').classList.toggle('hidden', !isShort || isCom);
+
+  // Commercial sections
+  document.getElementById('sec-comm-rent').classList.toggle('hidden', !isCom);
+  document.getElementById('sec-comm-fitout').classList.toggle('hidden', !isCom);
+  const isSqft = M.commRentMode === 'sqft';
+  document.getElementById('f-comm-rent-sqft').classList.toggle('hidden', !isSqft);
+  document.getElementById('f-comm-rent-total').classList.toggle('hidden', isSqft);
+  if (document.getElementById('fitoutHint')) {
+    document.getElementById('fitoutHint').textContent =
+      M.commFitoutWho === 'tenant' ? t('hint_comm_fitout_tenant') : (LANG === 'en' ? 'included in entry cost' : 'включается в стоимость входа');
+  }
+  // Update toggles highlight
+  ['commVatDeal','commRentMode','commRentVat','commFitoutWho'].forEach(key => {
+    const tg = document.getElementById('tg-' + key);
+    if (tg) tg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === M[key]));
+  });
+
+  // Shared
   document.getElementById('sec-offplan').classList.toggle('hidden', !isOff);
-  document.getElementById('tg-fin').classList.toggle('hidden', isOff);
   document.getElementById('sec-mortgage').classList.toggle('hidden', !isMort);
-  document.getElementById('sec-long').classList.toggle('hidden', isShort);
-  document.getElementById('sec-short').classList.toggle('hidden', !isShort);
   document.getElementById('f-mgmt').classList.toggle('hidden', isShort);
   document.getElementById('f-growth').classList.toggle('hidden', isOff);
-  // долгосрок: заполняемость не нужна
   document.getElementById('f-occ-long').classList.toggle('hidden', !isShort);
 
-  document.getElementById('rentLabel').textContent    = isOff ? t('lbl_rent_off') : t('lbl_rent');
-  document.getElementById('adrLabel').textContent     = isOff ? t('lbl_adr_off')  : t('lbl_adr');
+  document.getElementById('rentLabel').textContent      = isOff ? t('lbl_rent_off') : t('lbl_rent');
+  document.getElementById('adrLabel').textContent       = isOff ? t('lbl_adr_off')  : t('lbl_adr');
   document.getElementById('sec-opex-title').textContent = isOff ? t('sec_opex_off') : t('sec_opex');
 
+  // Update calc display for sqft rent
+  if (isCom && isSqft) {
+    const area = num('area'), rate = num('commRentPerSqft');
+    const el = document.getElementById('commRentSqftCalc');
+    if (el) el.value = fmt(area * rate);
+  }
+
   updatePlanCheck();
+}
+
+const COMM_DEFAULTS = {
+  office:    { scRate: 30, commRentPerSqft: 120, commVacancyMonths: 3, commLeaseTerm: 3, commRentFreeMonths: 3 },
+  retail:    { scRate: 40, commRentPerSqft: 200, commVacancyMonths: 4, commLeaseTerm: 3, commRentFreeMonths: 2 },
+  warehouse: { scRate: 10, commRentPerSqft: 40,  commVacancyMonths: 2, commLeaseTerm: 5, commRentFreeMonths: 1 },
+};
+
+function applyCommDefaults(subtype) {
+  const d = COMM_DEFAULTS[subtype];
+  if (!d) return;
+  Object.entries(d).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  });
 }
 
 function updatePlanCheck() {
@@ -552,6 +725,7 @@ function computeOffplanIRRNew(toHandoverMos, horizonMos, paidPct, handoverPct, d
 }
 
 function calc() {
+  if (M.type === 'commercial') return calcCommercial();
   const P       = num('price');
   const isOff   = M.prop === 'offplan';
   const isMort  = M.fin === 'mortgage' && !isOff;
@@ -666,10 +840,133 @@ function calc() {
     annualized5     = (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/5)-1)*100;
   }
 
-  return {P,isOff,isMort,isShort,vatEnabled,dld,commission,vat,trustee,oqood,down,loan,mortgageReg,bankFee,valuation,
+  return {P,isOff,isMort,isShort,isCom:false,vatEnabled,dld,commission,vat,trustee,oqood,down,loan,mortgageReg,bankFee,valuation,
     monthlyPayment,debtService,dealCosts,entry,cashInvested,grossRevenue,effRevenue,operatorFee,util,
     serviceCharge,mgmt,opex,noi,cashFlow,grossYield,netYield,coc,payback,
     value5,rentYears,totalReturn5,annualized5,furn,offplan};
+}
+
+function calcCommercial() {
+  const P       = num('price');
+  const isOff   = M.prop === 'offplan';
+  const area    = num('area');
+  const EN      = LANG === 'en';
+
+  // Transaction costs
+  const vatDealOnTop  = M.commVatDeal === 'ontop';
+  const commDealVat   = vatDealOnTop ? P * 0.05 : 0;
+  const dld           = P * (num('dldPct') / 100) + 580;
+  const commission    = P * (num('commPct') / 100);
+  const vatOnComm     = commission * 0.05;
+  const trustee       = isOff ? 0 : (P >= 500000 ? 4200 : 2100);
+  const oqood         = isOff ? 1050 : 0;
+
+  // Fit-out
+  const fitout         = num('commFitout');
+  const fitoutOwner    = M.commFitoutWho === 'owner';
+  const fitoutInEntry  = fitoutOwner ? fitout : 0;
+
+  const dealCosts = dld + commission + vatOnComm + trustee + oqood + commDealVat;
+  const entry     = P + dealCosts + fitoutInEntry;
+
+  // Rent
+  const isSqft       = M.commRentMode === 'sqft';
+  const commRentGross = isSqft ? num('commRentPerSqft') * area : num('commRentTotal');
+  const vatInRent    = M.commRentVat === 'included';
+  const commRentExVat = vatInRent ? commRentGross / 1.05 : commRentGross;
+  const vatTransit    = vatInRent ? commRentGross - commRentExVat : 0;
+
+  // Vacancy & effective occupancy
+  const leaseTerm     = Math.max(1, num('commLeaseTerm'));
+  const vacancyMos    = num('commVacancyMonths');
+  const occFactor     = vacancyMos > 0 ? (leaseTerm * 12) / (leaseTerm * 12 + vacancyMos) : 1;
+
+  const rentFreeMonths = num('commRentFreeMonths');
+  const rentGrowthPct  = num('commRentGrowth');
+
+  // Expenses
+  const serviceCharge = area * num('scRate');
+  const mgmt          = commRentExVat * occFactor * (num('mgmtPct') / 100);
+  const maint         = num('maintenance');
+  const opex          = serviceCharge + mgmt + maint;
+
+  // Steady-state NOI (no rent-free)
+  const effRent = commRentExVat * occFactor;
+  const noi     = effRent - opex;
+
+  // First year NOI (rent-free applied)
+  const noiYear1 = commRentExVat * ((12 - rentFreeMonths) / 12) * occFactor - opex;
+
+  const grossYield = P > 0 ? commRentExVat / P * 100 : 0;
+  const netYield   = entry > 0 ? noi / entry * 100 : 0;
+
+  // Helper: cumulative NOI with annual rent growth over N years (first year has rent-free)
+  function cumNOI(years) {
+    let total = 0;
+    for (let y = 1; y <= Math.floor(years); y++) {
+      const rentY = commRentExVat * Math.pow(1 + rentGrowthPct / 100, y - 1) * occFactor;
+      const noiy  = (y === 1 ? commRentExVat * ((12 - rentFreeMonths) / 12) * occFactor : rentY) - opex;
+      total += noiy;
+    }
+    const frac = years - Math.floor(years);
+    if (frac > 0) {
+      const yF = Math.ceil(years);
+      const rentF = commRentExVat * Math.pow(1 + rentGrowthPct / 100, yF - 1) * occFactor;
+      total += (rentF - opex) * frac;
+    }
+    return total;
+  }
+
+  let value5, totalReturn5, annualized5, offplan = null;
+  const horizYrs = isOff ? Math.max(0.1, num('horizonYears')) : 5;
+
+  if (isOff) {
+    const handoverMos    = num('handoverMonths');
+    const paidPct        = num('paidPct');
+    const handoverPct    = num('handoverPct');
+    const growthPre      = num('growthPre');
+    const growthPost     = num('growthPost');
+    const planError      = Math.abs(paidPct + handoverPct - 100) > 0.001;
+    const toHandoverYrs  = handoverMos / 12;
+    const toHandoverMosInt = Math.max(1, Math.round(handoverMos));
+    const horizonMos     = Math.max(1, Math.round(horizYrs * 12));
+    const preHandoverExit = horizYrs <= toHandoverYrs;
+    const valueAtHandover = P * Math.pow(1 + growthPre / 100, toHandoverYrs);
+    const salePrice = preHandoverExit
+      ? P * Math.pow(1 + growthPre / 100, horizYrs)
+      : valueAtHandover * Math.pow(1 + growthPost / 100, horizYrs - toHandoverYrs);
+    const rentalYears = preHandoverExit ? 0 : Math.max(0, horizYrs - toHandoverYrs);
+    const rentalIncome = rentalYears > 0 ? cumNOI(rentalYears) : 0;
+    const dealFees    = dld + oqood + commission + vatOnComm + commDealVat;
+    const constrMosPaid    = Math.min(horizonMos, toHandoverMosInt);
+    const constructionPaid = toHandoverMosInt > 0 ? P * (paidPct / 100) * constrMosPaid / toHandoverMosInt : 0;
+    const handoverPaid = preHandoverExit ? 0 : P * (handoverPct / 100);
+    const invested     = constructionPaid + handoverPaid + dealFees + fitoutInEntry;
+    const capitalGain  = salePrice - P;
+    const totalProfit  = capitalGain + rentalIncome;
+    const totalROI     = invested > 0 ? totalProfit / invested * 100 : 0;
+    const annualizedROI = horizYrs > 0 ? (Math.pow(1 + Math.max(totalROI, -99) / 100, 1 / horizYrs) - 1) * 100 : 0;
+    const irrAnnual = computeOffplanIRRNew(toHandoverMosInt, horizonMos, paidPct, handoverPct, dealFees, fitoutInEntry, P, noi, salePrice);
+    value5 = salePrice; totalReturn5 = totalROI; annualized5 = annualizedROI;
+    offplan = { horizonYears:horizYrs, handoverMos, toHandoverYrs, paidPct, handoverPct,
+      growthPre, growthPost, planError, preHandoverExit, valueAtHandover, salePrice,
+      rentalYears, rentalIncome, dealFees, constructionPaid, handoverPaid, invested,
+      capitalGain, totalProfit, totalROI, annualizedROI, irrAnnual };
+  } else {
+    const growth = num('growth');
+    value5 = P * Math.pow(1 + growth / 100, 5);
+    const cum5  = cumNOI(5);
+    totalReturn5 = entry > 0 ? (value5 - P + cum5) / entry * 100 : 0;
+    annualized5  = (Math.pow(1 + Math.max(totalReturn5, -99) / 100, 1 / 5) - 1) * 100;
+  }
+
+  return { P, isOff, isMort: false, isShort: false, isCom: true, vatEnabled: false,
+    commSubtype: M.comm, vatDealOnTop, commDealVat, dld, commission, vatOnComm,
+    trustee, oqood, dealCosts, fitout, fitoutOwner, fitoutInEntry, entry, cashInvested: entry,
+    commRentGross, commRentExVat, vatInRent, vatTransit, effRent, leaseTerm, vacancyMos, occFactor,
+    rentFreeMonths, rentGrowthPct, serviceCharge, mgmt, maint, opex, noi, noiYear1, cashFlow: noi,
+    grossRevenue: commRentExVat, effRevenue: effRent, grossYield, netYield, coc: netYield,
+    value5, rentYears: 5, totalReturn5, annualized5, furn: 0, offplan };
 }
 
 const row = (l,v,opts={}) =>
@@ -679,6 +976,11 @@ const row = (l,v,opts={}) =>
 function recalc() {
   sanitizeInputs();
   updatePlanCheck();
+  // Update sqft rent calculated field
+  if (M.type === 'commercial' && M.commRentMode === 'sqft') {
+    const el = document.getElementById('commRentSqftCalc');
+    if (el) el.value = fmt(num('area') * num('commRentPerSqft'));
+  }
   const r = calc();
   const yColor    = r.netYield>=6 ? 'var(--green)' : r.netYield>=4.5 ? 'var(--brass)' : 'var(--red)';
   const heroColor = r.netYield<4.5 ? '#E8B59F' : '#E9D9A8';
@@ -688,6 +990,88 @@ function recalc() {
   const commLabel = r.vatEnabled
     ? (EN ? `Commission ${num('commPct')}% + VAT 5%` : `Комиссия ${num('commPct')}% + VAT 5%`)
     : (EN ? `Commission ${num('commPct')}%`          : `Комиссия ${num('commPct')}%`);
+
+  // ── Commercial results branch ─────────────────────────
+  if (r.isCom) {
+    const subtypeLabel = EN
+      ? { office:'Office', retail:'Retail', warehouse:'Warehouse' }[r.commSubtype]
+      : { office:'Офис',  retail:'Ритейл', warehouse:'Склад' }[r.commSubtype];
+    const commCommLabel = `${EN?'Commission':'Комиссия'} ${num('commPct')}% + VAT`;
+    const occPct = (r.occFactor * 100).toFixed(1);
+    let html2 = `
+    <div class="hero">
+      <div class="kl">${EN ? 'Net Yield' : 'Чистая доходность'} <button class="tip-btn" onclick="showTip('netYield',event)">?</button></div>
+      <div class="kl">${EN ? 'Gross Yield' : 'Валовая доходность'} <button class="tip-btn" onclick="showTip('grossYield',event)">?</button></div>
+      <div class="kv" style="color:${heroColor}">${fmt(r.netYield,2)}%</div>
+      <div class="kv">${fmt(r.grossYield,2)}%</div>
+      <div class="kd">${EN ? 'NOI / total entry cost' : 'NOI / стоимость входа'}</div>
+      <div class="kd">${EN ? 'rent ex-VAT / price' : 'аренда без VAT / цена'}</div>
+    </div>
+    <div class="section"><div class="sec-title">${EN ? 'Entry Cost' : 'Стоимость входа'} · ${subtypeLabel}</div>`
+    + row(EN ? 'Property price' : 'Цена объекта', fmt(r.P)+' AED')
+    + row(`DLD ${num('dldPct')}% + AED 580`, fmt(r.dld)+' AED', {indent:1})
+    + row(commCommLabel, fmt(r.commission + r.vatOnComm)+' AED', {indent:1})
+    + (r.isOff ? row(EN ? 'Oqood registration' : 'Oqood', fmt(r.oqood)+' AED', {indent:1})
+               : row('Trustee', fmt(r.trustee)+' AED', {indent:1}))
+    + (r.commDealVat > 0 ? row(EN ? 'VAT on deal (5%)' : 'VAT на сделку (5%)', fmt(r.commDealVat)+' AED', {indent:1, color:'var(--red)'}) : '')
+    + (!r.vatDealOnTop && r.P > 0 ? row(EN ? 'VAT in price (ref)' : 'VAT включён в цену (справочно)', fmt(r.P - r.P/1.05)+' AED', {indent:1}) : '')
+    + (r.fitoutInEntry > 0 ? row(EN ? 'Fit-out (owner)' : 'Fit-out (собственник)', fmt(r.fitoutInEntry)+' AED', {indent:1}) : '')
+    + (r.fitout > 0 && !r.fitoutOwner ? row(EN ? 'Fit-out (tenant, ref)' : 'Fit-out (арендатор, справочно)', fmt(r.fitout)+' AED') : '')
+    + row(EN ? 'Total entry cost' : 'Итого вход', fmt(r.entry)+' AED', {bold:1})
+    + `</div>
+    <div class="section"><div class="sec-title">${EN ? 'Annual Cash Flow (NOI)' : 'Годовой поток (NOI)'}</div>`
+    + row(EN ? 'Rent ex-VAT (owner income)' : 'Аренда без VAT (доход собственника)', fmt(r.commRentExVat)+' AED')
+    + (r.vatTransit > 0 ? row(EN ? 'VAT transit → FTA' : 'VAT транзитом → FTA', fmt(r.vatTransit)+' AED') : '')
+    + (r.vacancyMos > 0 ? row(EN ? `Vacancy factor (${fmt(r.vacancyMos,0)} mo / cycle)` : `Вакантность (${fmt(r.vacancyMos,0)} мес./цикл)`, occPct+'% eff.', {indent:1, color:'var(--sub)'}) : '')
+    + row(EN ? 'Service charge' : 'Service charge', '−'+fmt(r.serviceCharge)+' AED', {indent:1, color:'var(--red)'})
+    + (r.mgmt > 0 ? row(EN ? 'Management' : 'Управление', '−'+fmt(r.mgmt)+' AED', {indent:1, color:'var(--red)'}) : '')
+    + row(EN ? 'Repairs / reserve' : 'Ремонт / резерв', '−'+fmt(r.maint)+' AED', {indent:1, color:'var(--red)'})
+    + row(EN ? 'NOI (steady state)' : 'NOI (стабильная)', fmt(r.noi)+' AED/'+t('year_unit'), {bold:1, color:yColor})
+    + row(EN ? 'Year 1 NOI (rent-free adj.)' : 'NOI год 1 (с учётом rent-free)', fmt(r.noiYear1)+' AED/'+t('year_unit'))
+    + row(EN ? 'Per month' : 'В месяц', fmt(r.noi/12)+' '+aed_mo)
+    + `</div>`;
+
+    if (r.isOff && r.offplan) {
+      const o = r.offplan;
+      if (o.planError) {
+        html2 += `<div class="section" style="border-color:var(--red)"><div class="sec-title" style="color:var(--red)">⚠ ${EN?'Payment Plan Error':'Ошибка плана платежей'}</div>`
+          +`<div style="font-size:13px;color:var(--red)">`
+          +(EN?`Pre+On handover must total 100% (${fmt(o.paidPct+o.handoverPct,1)}%)`:`Сумма «До» + «На handover» = 100% (сейчас ${fmt(o.paidPct+o.handoverPct,1)}%)`)
+          +`</div></div>`;
+      }
+      const cMos = Math.round(o.handoverMos);
+      const pLabel = o.preHandoverExit
+        ? (EN?`Construction ${cMos} mo (flip)`:`Стройка ${cMos} мес. (флип)`)
+        : (EN?`Construction ${cMos} mo + rental ${fmt(o.rentalYears,1)} yrs`:`Стройка ${cMos} мес. + аренда ${fmt(o.rentalYears,1)} лет`);
+      html2 += `<div class="section"><div class="sec-title">${EN?`Horizon ${fmt(o.horizonYears,1)} yrs`:`Горизонт ${fmt(o.horizonYears,1)} лет`}</div>`
+      +`<div class="f-hint" style="margin-bottom:10px">${pLabel}</div>`
+      +row(EN?'Total invested':'Вложено', fmt(o.invested)+' AED', {bold:1})
+      +row(EN?`  Construction (${fmt(o.paidPct,o.paidPct%1===0?0:1)}%)`:`  Стройка (${fmt(o.paidPct,o.paidPct%1===0?0:1)}%)`, fmt(o.constructionPaid)+' AED', {indent:1})
+      +(!o.preHandoverExit?row(EN?`  Handover (${fmt(o.handoverPct,o.handoverPct%1===0?0:1)}%)`:`  Handover (${fmt(o.handoverPct,o.handoverPct%1===0?0:1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}):'')
+      +row(EN?'  Deal fees':'  Сборы (DLD, Oqood, комиссия)', fmt(o.dealFees)+' AED', {indent:1})
+      +row(EN?'Sale price at horizon':'Цена продажи в конце горизонта', fmt(o.salePrice)+' AED')
+      +(!o.preHandoverExit?row(EN?`Net rental income (${fmt(o.rentalYears,1)} yrs)`:`Чистый доход от аренды (${fmt(o.rentalYears,1)} лет)`, '+'+fmt(o.rentalIncome)+' AED'):'')
+      +row(EN?'Capital gain':'Прирост капитала', (o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
+      +row(EN?'Total profit':'Итоговая прибыль', (o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED', {bold:1})
+      +row(EN?'Total ROI':'Совокупный ROI', fmt(o.totalROI,1)+'%', {bold:1, color:'var(--green)'})
+      +row(EN?'Avg. annual ROI':'Среднегодовой ROI', fmt(o.annualizedROI,2)+'%')
+      +row(EN?`IRR <button class="tip-btn" onclick="showTip('irr',event)">?</button>`:`IRR <button class="tip-btn" onclick="showTip('irr',event)">?</button>`, o.irrAnnual===null?'—':fmt(o.irrAnnual,1)+'%', {bold:1, color:'var(--green)'})
+      +`</div>`;
+    } else {
+      const growth = num('growth');
+      html2 += `<div class="section"><div class="sec-title">${EN?`5-Year Horizon · ${growth}%/yr growth`:`Горизонт 5 лет · рост ${growth}%/год`}</div>`
+      +row(EN?'Projected value':'Прогноз стоимости', fmt(r.value5)+' AED')
+      +row(EN?'Capital gain':'Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
+      +row(EN?'NOI income (5 yrs, cumulative)':'Накопленный NOI (5 лет)', '+'+fmt(r.noi*5)+' AED')
+      +row(EN?'Total ROI':'Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
+      +row(EN?'Avg. annual ROI':'Среднегодовой ROI', fmt(r.annualized5,2)+'%')
+      +`</div>`;
+    }
+    html2 += `<button class="btn gray" style="width:100%;margin-bottom:8px" onclick="saveToHistory(this)">${t('btn_save')}</button>`;
+    document.getElementById('results').innerHTML = html2;
+    return;
+  }
+  // ── End commercial ────────────────────────────────────
 
   let revLabel;
   if (r.isShort) {
@@ -791,6 +1175,87 @@ function buildReport() {
   const name  = document.getElementById('projectName').value || (EN ? 'Property' : 'Объект недвижимости');
   const today = new Date().toLocaleDateString(LANG === 'en' ? 'en-GB' : 'ru-RU');
   const aed_mo = EN ? 'AED/mo' : 'AED/мес';
+
+  // ── Commercial report branch ──────────────────────────
+  if (r.isCom) {
+    const subtypeLabel = EN
+      ? {office:'Office',retail:'Retail',warehouse:'Warehouse'}[r.commSubtype]
+      : {office:'Офис',retail:'Ритейл',warehouse:'Склад'}[r.commSubtype];
+    const scenarioCom = [
+      EN ? 'Commercial' : 'Коммерческая', subtypeLabel,
+      r.isOff ? (EN?'Off-plan':'Офф-план') : (EN?'Ready':'Готовый'),
+      fmt(num('area'))+' sqft'
+    ].join(' · ');
+    const footer = EN
+      ? `Indicative analysis only. VAT on rent is transit (not income). Capital growth is an assumption. · ${today}`
+      : `Расчёт оценочный. VAT в аренде — транзит, не доход. Рост цены — допущение. · ${today}`;
+    const occPct = (r.occFactor*100).toFixed(1);
+    let rHtml = `
+    <div class="rep-head">
+      <div class="eyebrow">Commercial Investment Summary · Dubai · ${today}</div>
+      <h2>${name}</h2>
+      <div style="font-size:13px;color:var(--sub)">${scenarioCom}</div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="l">${EN?'Net Yield':'Чистая доходность'}</div><div class="v">${fmt(r.netYield,2)}%</div></div>
+      <div class="kpi"><div class="l">${EN?'Gross Yield':'Валовая доходность'}</div><div class="v">${fmt(r.grossYield,2)}%</div></div>
+      <div class="kpi"><div class="l">${r.isOff?(EN?`${r.offplan.horizonYears}-yr ROI`:`ROI за ${r.offplan.horizonYears} лет`):(EN?'5-yr ROI':'ROI за 5 лет')}</div><div class="v">${fmt(r.totalReturn5,1)}%</div></div>
+    </div>
+    <div class="rep-section"><h3>${EN?'Entry Cost':'Стоимость входа'}</h3>`
+    + row(EN?'Property price':'Цена объекта', fmt(r.P)+' AED')
+    + row(`DLD ${num('dldPct')}% + AED 580`, fmt(r.dld)+' AED', {indent:1})
+    + row(EN?'Commission + VAT 5%':'Комиссия + VAT 5%', fmt(r.commission+r.vatOnComm)+' AED', {indent:1})
+    + (r.isOff?row('Oqood',fmt(r.oqood)+' AED',{indent:1}):row('Trustee',fmt(r.trustee)+' AED',{indent:1}))
+    + (r.commDealVat>0?row(EN?'VAT on deal (5%)':'VAT на сделку (5%)', fmt(r.commDealVat)+' AED',{indent:1,color:'var(--red)'}):'')
+    + (!r.vatDealOnTop?row(EN?'VAT in price (ref)':'VAT в цене (справочно)', fmt(r.P-r.P/1.05)+' AED',{indent:1}):'')
+    + (r.fitoutInEntry>0?row(EN?'Fit-out (owner)':'Fit-out (собственник)', fmt(r.fitoutInEntry)+' AED',{indent:1}):'')
+    + (r.fitout>0&&!r.fitoutOwner?row(EN?'Fit-out (tenant, ref)':'Fit-out (арендатор, справочно)', fmt(r.fitout)+' AED'):'')
+    + row(EN?'Total entry cost':'Итого вход', fmt(r.entry)+' AED',{bold:1})
+    + `</div><div class="rep-section"><h3>${EN?'Annual Cash Flow (NOI)':'Годовой поток (NOI)'}</h3>`
+    + row(EN?'Rent ex-VAT (owner income)':'Аренда без VAT (доход собственника)', fmt(r.commRentExVat)+' AED')
+    + (r.vatTransit>0?row(EN?'VAT transit → FTA':'VAT транзитом → FTA', fmt(r.vatTransit)+' AED'):'')
+    + (r.vacancyMos>0?row(EN?`Effective occupancy (${fmt(r.vacancyMos,0)} mo vacancy)`:`Эффективная занятость (${fmt(r.vacancyMos,0)} мес. простоя)`, occPct+'%',{indent:1}):'')
+    + row(EN?'Service charge':'Service charge','−'+fmt(r.serviceCharge)+' AED',{indent:1,color:'var(--red)'})
+    + (r.mgmt>0?row(EN?'Management':'Управление','−'+fmt(r.mgmt)+' AED',{indent:1,color:'var(--red)'}):'')
+    + row(EN?'Repairs / reserve':'Ремонт / резерв','−'+fmt(r.maint)+' AED',{indent:1,color:'var(--red)'})
+    + row(EN?'NOI (steady state)':'NOI (стабильная)', fmt(r.noi)+' AED/'+t('year_unit'),{bold:1,color:'var(--green)'})
+    + row(EN?`Year 1 NOI (rent-free ${fmt(r.rentFreeMonths,0)} mo)`:`NOI год 1 (rent-free ${fmt(r.rentFreeMonths,0)} мес.)`, fmt(r.noiYear1)+' AED/'+t('year_unit'))
+    + `</div>`;
+
+    if (r.isOff && r.offplan) {
+      const o = r.offplan;
+      const cMos = Math.round(o.handoverMos);
+      const pLabel = o.preHandoverExit
+        ?(EN?`Construction ${cMos} mo (flip)`:`Стройка ${cMos} мес. (флип)`)
+        :(EN?`Construction ${cMos} mo + rental ${fmt(o.rentalYears,1)} yrs`:`Стройка ${cMos} мес. + аренда ${fmt(o.rentalYears,1)} лет`);
+      rHtml += `<div class="rep-section"><h3>${EN?`Horizon ${fmt(o.horizonYears,1)} yrs`:`Горизонт ${fmt(o.horizonYears,1)} лет`}</h3>`
+      +`<div style="font-size:12px;color:var(--sub);margin-bottom:4px">${pLabel}</div>`
+      +row(EN?'Total invested':'Вложено',fmt(o.invested)+' AED',{bold:1})
+      +row(EN?`Construction (${fmt(o.paidPct,o.paidPct%1===0?0:1)}%)`:`Стройка (${fmt(o.paidPct,o.paidPct%1===0?0:1)}%)`,fmt(o.constructionPaid)+' AED',{indent:1})
+      +(!o.preHandoverExit?row(EN?`Handover (${fmt(o.handoverPct,o.handoverPct%1===0?0:1)}%)`:`Handover (${fmt(o.handoverPct,o.handoverPct%1===0?0:1)}%)`,fmt(o.handoverPaid)+' AED',{indent:1}):'')
+      +row(EN?'Deal fees':'Сборы (DLD, Oqood, комиссия)',fmt(o.dealFees)+' AED',{indent:1})
+      +row(EN?'Sale price':'Цена продажи',fmt(o.salePrice)+' AED')
+      +(!o.preHandoverExit?row(EN?`Net rental income (${fmt(o.rentalYears,1)} yrs)`:`Чистый доход от аренды (${fmt(o.rentalYears,1)} лет)`,'+'+fmt(o.rentalIncome)+' AED'):'')
+      +row(EN?'Capital gain':'Прирост капитала',(o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
+      +row(EN?'Total profit':'Итоговая прибыль',(o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED',{bold:1})
+      +row(EN?'Total ROI':'Совокупный ROI',fmt(o.totalROI,1)+'%',{bold:1,color:'var(--green)'})
+      +row(EN?'Avg. annual ROI':'Среднегодовой ROI',fmt(o.annualizedROI,2)+'%')
+      +row(EN?'IRR — real return on deferred payments':'IRR — реальная доходность с учётом рассрочки',o.irrAnnual===null?'—':fmt(o.irrAnnual,1)+'%',{bold:1,color:'var(--green)'})
+      +`</div>`;
+    } else {
+      rHtml += `<div class="rep-section"><h3>${EN?`5-Year Horizon · ${num('growth')}%/yr growth`:`Горизонт 5 лет · рост ${num('growth')}%/год`}</h3>`
+      +row(EN?'Projected value':'Прогноз стоимости',fmt(r.value5)+' AED')
+      +row(EN?'Capital gain':'Прирост капитала','+'+fmt(r.value5-r.P)+' AED')
+      +row(EN?'Cumulative NOI (5 yrs)':'Накопленный NOI (5 лет)','+'+fmt(r.noi*5)+' AED')
+      +row(EN?'Total ROI':'Совокупный ROI',`${fmt(r.totalReturn5,1)}%`,{bold:1,color:'var(--green)'})
+      +row(EN?'Avg. annual ROI':'Среднегодовой ROI',fmt(r.annualized5,2)+'%')
+      +`</div>`;
+    }
+    rHtml += `<div class="rep-foot">${footer}</div>`;
+    document.getElementById('report').innerHTML = rHtml;
+    return;
+  }
+  // ── End commercial report ─────────────────────────────
 
   const scenario = [
     r.isOff ? (EN ? 'Off-plan' : 'Офф-план') : (EN ? 'Ready property' : 'Готовый объект'),
