@@ -579,6 +579,25 @@ const num = id => {
 const fmt = (n, dec=0) => new Intl.NumberFormat(LANG === 'en' ? 'en-US' : 'ru-RU',
   {maximumFractionDigits:dec, minimumFractionDigits:dec}).format(isFinite(n)?n:0);
 
+function declYears(n) {
+  const abs = Math.abs(Math.round(n));
+  if (LANG !== 'ru') return abs === 1 ? 'yr' : 'yrs';
+  const m10 = abs % 10, m100 = abs % 100;
+  if (m100 >= 11 && m100 <= 14) return 'лет';
+  if (m10 === 1) return 'год';
+  if (m10 >= 2 && m10 <= 4) return 'года';
+  return 'лет';
+}
+function declMonths(n) {
+  const abs = Math.abs(Math.round(n));
+  if (LANG !== 'ru') return abs === 1 ? 'month' : 'months';
+  const m10 = abs % 10, m100 = abs % 100;
+  if (m100 >= 11 && m100 <= 14) return 'месяцев';
+  if (m10 === 1) return 'месяц';
+  if (m10 >= 2 && m10 <= 4) return 'месяца';
+  return 'месяцев';
+}
+
 function setMode(key, val) {
   M[key] = val;
   const tg = document.getElementById('tg-' + key);
@@ -810,7 +829,7 @@ function calc() {
     const furnPaid     = preHandoverExit ? 0 : furn;
     const invested     = constructionPaid + handoverPaid + dealFees + furnPaid;
 
-    const capitalGain   = salePrice - P;
+    const capitalGain   = salePrice - entry;
     const totalProfit   = capitalGain + rentalIncome;
     const totalROI      = invested > 0 ? totalProfit / invested * 100 : 0;
     const annualizedROI = horizonYears > 0
@@ -836,7 +855,7 @@ function calc() {
     value5          = P*Math.pow(1+growth/100, 5);
     rentYears       = 5;
     const baseInvest= cashInvested;
-    totalReturn5    = baseInvest>0 ? (value5-P+cashFlow*rentYears)/baseInvest*100 : 0;
+    totalReturn5    = baseInvest>0 ? (value5-entry+cashFlow*rentYears)/baseInvest*100 : 0;
     annualized5     = (Math.pow(1+Math.max(totalReturn5,-99)/100, 1/5)-1)*100;
   }
 
@@ -1000,7 +1019,7 @@ function recalc() {
     const occPct = (r.occFactor * 100).toFixed(1);
     let html2 = `
     <div class="hero">
-      <div class="kl">${EN ? 'Net Yield' : 'Чистая доходность'} <button class="tip-btn" onclick="showTip('netYield',event)">?</button></div>
+      <div class="kl">${EN ? 'Net Yield on Total Investment' : 'Чистая доходность на вложенный капитал'} <button class="tip-btn" onclick="showTip('netYield',event)">?</button></div>
       <div class="kl">${EN ? 'Gross Yield' : 'Валовая доходность'} <button class="tip-btn" onclick="showTip('grossYield',event)">?</button></div>
       <div class="kv" style="color:${heroColor}">${fmt(r.netYield,2)}%</div>
       <div class="kv">${fmt(r.grossYield,2)}%</div>
@@ -1042,15 +1061,15 @@ function recalc() {
       const cMos = Math.round(o.handoverMos);
       const pLabel = o.preHandoverExit
         ? (EN?`Construction ${cMos} mo (flip)`:`Стройка ${cMos} мес. (флип)`)
-        : (EN?`Construction ${cMos} mo + rental ${fmt(o.rentalYears,1)} yrs`:`Стройка ${cMos} мес. + аренда ${fmt(o.rentalYears,1)} лет`);
-      html2 += `<div class="section"><div class="sec-title">${EN?`Horizon ${fmt(o.horizonYears,1)} yrs`:`Горизонт ${fmt(o.horizonYears,1)} лет`}</div>`
+        : (EN?`Construction ${cMos} mo + rental ${fmt(o.rentalYears,1)} yrs`:`Стройка ${cMos} мес. + аренда ${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)}`);
+      html2 += `<div class="section"><div class="sec-title">${EN?`Horizon ${fmt(o.horizonYears,1)} yrs`:`Горизонт ${fmt(o.horizonYears,1)} ${declYears(o.horizonYears)}`}</div>`
       +`<div class="f-hint" style="margin-bottom:10px">${pLabel}</div>`
       +row(EN?'Total invested':'Вложено', fmt(o.invested)+' AED', {bold:1})
       +row(EN?`  Construction (${fmt(o.paidPct,o.paidPct%1===0?0:1)}%)`:`  Стройка (${fmt(o.paidPct,o.paidPct%1===0?0:1)}%)`, fmt(o.constructionPaid)+' AED', {indent:1})
       +(!o.preHandoverExit?row(EN?`  Handover (${fmt(o.handoverPct,o.handoverPct%1===0?0:1)}%)`:`  Handover (${fmt(o.handoverPct,o.handoverPct%1===0?0:1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}):'')
       +row(EN?'  Deal fees':'  Сборы (DLD, Oqood, комиссия)', fmt(o.dealFees)+' AED', {indent:1})
       +row(EN?'Sale price at horizon':'Цена продажи в конце горизонта', fmt(o.salePrice)+' AED')
-      +(!o.preHandoverExit?row(EN?`Net rental income (${fmt(o.rentalYears,1)} yrs)`:`Чистый доход от аренды (${fmt(o.rentalYears,1)} лет)`, '+'+fmt(o.rentalIncome)+' AED'):'')
+      +(!o.preHandoverExit?row(EN?`Net rental income (${fmt(o.rentalYears,1)} yrs)`:`Чистый доход от аренды (${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)})`, '+'+fmt(o.rentalIncome)+' AED'):'')
       +row(EN?'Capital gain':'Прирост капитала', (o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
       +row(EN?'Total profit':'Итоговая прибыль', (o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED', {bold:1})
       +row(EN?'Total ROI':'Совокупный ROI', fmt(o.totalROI,1)+'%', {bold:1, color:'var(--green)'})
@@ -1084,7 +1103,7 @@ function recalc() {
 
   let html = `
   <div class="hero">
-    <div class="kl">${EN ? 'Net Yield' : 'Чистая доходность'} <button class="tip-btn" onclick="showTip('netYield',event)">?</button></div>
+    <div class="kl">${EN ? 'Net Yield on Total Investment' : 'Чистая доходность на вложенный капитал'} <button class="tip-btn" onclick="showTip('netYield',event)">?</button></div>
     <div class="kl">${r.isMort ? 'Cash-on-cash' : (EN ? 'Gross Yield' : 'Валовая доходность')} <button class="tip-btn" onclick="showTip('${r.isMort?'coc':'grossYield'}',event)">?</button></div>
     <div class="kv" style="color:${heroColor}">${fmt(r.netYield,2)}%</div>
     <div class="kv">${fmt(r.isMort?r.coc:r.grossYield,2)}%</div>
@@ -1135,9 +1154,9 @@ function recalc() {
     const phaseLabel = o.preHandoverExit
       ? (EN ? `Construction ${constructMos} months (flip, no rental)` : `Стройка ${constructMos} мес. (флип, без аренды)`)
       : (EN ? `Construction ${constructMos} months + rental ${fmt(o.rentalYears,1)} yrs`
-            : `Стройка ${constructMos} мес. + аренда ${fmt(o.rentalYears,1)} лет`);
+            : `Стройка ${constructMos} мес. + аренда ${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)}`);
 
-    html += `<div class="section"><div class="sec-title">${EN ? `Horizon ${fmt(o.horizonYears,1)} yrs` : `Горизонт ${fmt(o.horizonYears,1)} лет`}</div>`
+    html += `<div class="section"><div class="sec-title">${EN ? `Horizon ${fmt(o.horizonYears,1)} yrs` : `Горизонт ${fmt(o.horizonYears,1)} ${declYears(o.horizonYears)}`}</div>`
     + `<div class="f-hint" style="margin-bottom:10px">${phaseLabel}</div>`
     + row(EN ? 'Total invested' : 'Вложено', fmt(o.invested)+' AED', {bold:1})
     + row(EN
@@ -1147,7 +1166,7 @@ function recalc() {
     + (!o.preHandoverExit ? row(EN ? `  Handover payment (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)` : `  Платёж на handover (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}) : '')
     + row(EN ? '  Deal fees (DLD, Oqood, commission)' : '  Сборы (DLD, Oqood, комиссия)', fmt(o.dealFees)+' AED', {indent:1})
     + row(EN ? 'Sale price at horizon end' : 'Цена продажи в конце горизонта', fmt(o.salePrice)+' AED')
-    + (!o.preHandoverExit ? row(EN ? `Net rental income (${fmt(o.rentalYears,1)} yrs)` : `Чистый доход от аренды (${fmt(o.rentalYears,1)} лет)`, '+'+fmt(o.rentalIncome)+' AED') : '')
+    + (!o.preHandoverExit ? row(EN ? `Net rental income (${fmt(o.rentalYears,1)} yrs)` : `Чистый доход от аренды (${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)})`, '+'+fmt(o.rentalIncome)+' AED') : '')
     + row(EN ? 'Capital gain' : 'Прирост капитала', (o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
     + row(EN ? 'Total profit' : 'Итоговая прибыль', (o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED', {bold:1})
     + row(EN ? 'Total ROI' : 'Совокупный ROI', fmt(o.totalROI,1)+'%', {bold:1, color:'var(--green)'})
@@ -1157,8 +1176,8 @@ function recalc() {
   } else {
     html += `<div class="section"><div class="sec-title">${EN ? `5-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт 5 лет · рост ${num('growth')}%/год`}</div>`
     + row(EN ? 'Value in 5 years' : 'Стоимость через 5 лет', fmt(r.value5)+' AED')
-    + row(EN ? 'Capital gain' : 'Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
-    + row(EN ? `Rental income (${fmt(r.rentYears,1)} yrs)` : `Аренда за ${fmt(r.rentYears,1)} лет`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
+    + row(EN ? 'Capital gain' : 'Прирост капитала', '+'+fmt(r.value5-r.entry)+' AED')
+    + row(EN ? `Rental income (${fmt(r.rentYears,1)} yrs)` : `Аренда за ${fmt(r.rentYears,1)} ${declYears(r.rentYears)}`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
     + row(EN ? 'Total ROI' : 'Совокупный ROI', fmt(r.totalReturn5,1)+'%', {bold:1, color:'var(--green)'})
     + row(EN ? '≈ annualized' : '≈ годовых', fmt(r.annualized5,2)+'%')
     + `</div>`;
@@ -1227,15 +1246,15 @@ function buildReport() {
       const cMos = Math.round(o.handoverMos);
       const pLabel = o.preHandoverExit
         ?(EN?`Construction ${cMos} mo (flip)`:`Стройка ${cMos} мес. (флип)`)
-        :(EN?`Construction ${cMos} mo + rental ${fmt(o.rentalYears,1)} yrs`:`Стройка ${cMos} мес. + аренда ${fmt(o.rentalYears,1)} лет`);
-      rHtml += `<div class="rep-section"><h3>${EN?`Horizon ${fmt(o.horizonYears,1)} yrs`:`Горизонт ${fmt(o.horizonYears,1)} лет`}</h3>`
+        :(EN?`Construction ${cMos} mo + rental ${fmt(o.rentalYears,1)} yrs`:`Стройка ${cMos} мес. + аренда ${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)}`);
+      rHtml += `<div class="rep-section"><h3>${EN?`Horizon ${fmt(o.horizonYears,1)} yrs`:`Горизонт ${fmt(o.horizonYears,1)} ${declYears(o.horizonYears)}`}</h3>`
       +`<div style="font-size:12px;color:var(--sub);margin-bottom:4px">${pLabel}</div>`
       +row(EN?'Total invested':'Вложено',fmt(o.invested)+' AED',{bold:1})
       +row(EN?`Construction (${fmt(o.paidPct,o.paidPct%1===0?0:1)}%)`:`Стройка (${fmt(o.paidPct,o.paidPct%1===0?0:1)}%)`,fmt(o.constructionPaid)+' AED',{indent:1})
       +(!o.preHandoverExit?row(EN?`Handover (${fmt(o.handoverPct,o.handoverPct%1===0?0:1)}%)`:`Handover (${fmt(o.handoverPct,o.handoverPct%1===0?0:1)}%)`,fmt(o.handoverPaid)+' AED',{indent:1}):'')
       +row(EN?'Deal fees':'Сборы (DLD, Oqood, комиссия)',fmt(o.dealFees)+' AED',{indent:1})
       +row(EN?'Sale price':'Цена продажи',fmt(o.salePrice)+' AED')
-      +(!o.preHandoverExit?row(EN?`Net rental income (${fmt(o.rentalYears,1)} yrs)`:`Чистый доход от аренды (${fmt(o.rentalYears,1)} лет)`,'+'+fmt(o.rentalIncome)+' AED'):'')
+      +(!o.preHandoverExit?row(EN?`Net rental income (${fmt(o.rentalYears,1)} yrs)`:`Чистый доход от аренды (${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)})`,'+'+fmt(o.rentalIncome)+' AED'):'')
       +row(EN?'Capital gain':'Прирост капитала',(o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
       +row(EN?'Total profit':'Итоговая прибыль',(o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED',{bold:1})
       +row(EN?'Total ROI':'Совокупный ROI',fmt(o.totalROI,1)+'%',{bold:1,color:'var(--green)'})
@@ -1320,9 +1339,9 @@ function buildReport() {
     const phaseLabel = o.preHandoverExit
       ? (EN ? `Construction ${constructMos} months (flip, no rental)` : `Стройка ${constructMos} мес. (флип, без аренды)`)
       : (EN ? `Construction ${constructMos} months + rental ${fmt(o.rentalYears,1)} yrs`
-            : `Стройка ${constructMos} мес. + аренда ${fmt(o.rentalYears,1)} лет`);
+            : `Стройка ${constructMos} мес. + аренда ${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)}`);
 
-    html += `<div class="rep-section"><h3>${EN ? `Horizon ${fmt(o.horizonYears,1)} yrs` : `Горизонт ${fmt(o.horizonYears,1)} лет`}</h3>`
+    html += `<div class="rep-section"><h3>${EN ? `Horizon ${fmt(o.horizonYears,1)} yrs` : `Горизонт ${fmt(o.horizonYears,1)} ${declYears(o.horizonYears)}`}</h3>`
     + `<div style="font-size:12px;color:var(--sub);margin-bottom:4px">${phaseLabel}</div>`
     + row(EN ? 'Total invested' : 'Вложено', fmt(o.invested)+' AED', {bold:1})
     + row(EN
@@ -1332,7 +1351,7 @@ function buildReport() {
     + (!o.preHandoverExit ? row(EN ? `Handover payment (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)` : `Платёж на handover (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}) : '')
     + row(EN ? 'Deal fees (DLD, Oqood, commission)' : 'Сборы (DLD, Oqood, комиссия)', fmt(o.dealFees)+' AED', {indent:1})
     + row(EN ? 'Sale price at horizon end' : 'Цена продажи в конце горизонта', fmt(o.salePrice)+' AED')
-    + (!o.preHandoverExit ? row(EN ? `Net rental income (${fmt(o.rentalYears,1)} yrs)` : `Чистый доход от аренды (${fmt(o.rentalYears,1)} лет)`, '+'+fmt(o.rentalIncome)+' AED') : '')
+    + (!o.preHandoverExit ? row(EN ? `Net rental income (${fmt(o.rentalYears,1)} yrs)` : `Чистый доход от аренды (${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)})`, '+'+fmt(o.rentalIncome)+' AED') : '')
     + row(EN ? 'Capital gain' : 'Прирост капитала', (o.capitalGain>=0?'+':'')+fmt(o.capitalGain)+' AED')
     + row(EN ? 'Total profit' : 'Итоговая прибыль', (o.totalProfit>=0?'+':'')+fmt(o.totalProfit)+' AED', {bold:1})
     + row(EN ? 'Total ROI' : 'Совокупный ROI', fmt(o.totalROI,1)+'%', {bold:1, color:'var(--green)'})
@@ -1342,15 +1361,20 @@ function buildReport() {
   } else {
     html += `<div class="rep-section"><h3>${EN ? `5-Year Horizon · ${num('growth')}%/yr growth` : `Горизонт 5 лет · рост ${num('growth')}%/год`}</h3>`
     + row(EN ? 'Projected value' : 'Прогноз стоимости', fmt(r.value5)+' AED')
-    + row(EN ? 'Capital gain' : 'Прирост капитала', '+'+fmt(r.value5-r.P)+' AED')
-    + row(EN ? `Rental income (${fmt(r.rentYears,1)} yrs)` : `Доход от аренды (${fmt(r.rentYears,1)} лет)`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
+    + row(EN ? 'Capital gain' : 'Прирост капитала', '+'+fmt(r.value5-r.entry)+' AED')
+    + row(EN ? `Rental income (${fmt(r.rentYears,1)} yrs)` : `Доход от аренды (${fmt(r.rentYears,1)} ${declYears(r.rentYears)})`, '+'+fmt(r.cashFlow*r.rentYears)+' AED')
     + row(EN ? 'Total ROI' : 'Совокупный ROI', `${fmt(r.totalReturn5,1)}% · ≈${fmt(r.annualized5,2)}%/${EN?'yr':'год'}`, {bold:1, color:'var(--green)'})
     + `</div>`;
   }
 
+  const growthNote = r.isOff
+    ? (EN ? `Pre-handover growth ${r.offplan.growthPre}%/yr, post-handover ${r.offplan.growthPost}%/yr`
+          : `Рост до handover ${r.offplan.growthPre}%/год, после handover ${r.offplan.growthPost}%/год`)
+    : (EN ? `Capital growth ${num('growth')}%/yr` : `Рост стоимости ${num('growth')}%/год`);
+  const opexNote = EN ? `opex ${fmt(r.opex)} AED/yr` : `расходы ${fmt(r.opex)} AED/год`;
   const footer = EN
-    ? `This analysis is indicative and does not constitute investment advice. Capital growth projections are assumptions only. Excludes: DEWA deposit, chiller, insurance. · ${today}`
-    : `Расчёт носит оценочный характер и не является инвестиционной рекомендацией. Прогноз роста стоимости — допущение. Не учтены: DEWA-депозит, chiller, страхование. · ${today}`;
+    ? `Assumptions: ${growthNote}, ${opexNote}. This analysis is indicative and does not constitute investment advice. Excludes: DEWA deposit, chiller, insurance. · ${today}`
+    : `Допущения: ${growthNote}, ${opexNote}. Расчёт носит оценочный характер и не является инвестиционной рекомендацией. Не учтены: DEWA-депозит, chiller, страхование. · ${today}`;
   html += `<div class="rep-foot">${footer}</div>`;
 
   document.getElementById('report').innerHTML = html;
