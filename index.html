@@ -47,6 +47,11 @@
   .adv-details summary::-webkit-details-marker { display:none; }
   .adv-details summary::before { content:'▸ '; font-size:11px; }
   .adv-details[open] summary::before { content:'▾ '; }
+  button.suffix-btn { padding:0 12px; font-size:13px; border:none; border-left:1px solid var(--line); align-self:stretch; display:flex; align-items:center; background:#E6F0EB; color:var(--green); white-space:nowrap; cursor:pointer; font-weight:700; font-family:inherit; transition:background .15s,color .15s; }
+  button.suffix-btn:hover { background:var(--green); color:#fff; }
+  .flip-badge { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; margin-left:8px; vertical-align:middle; }
+  .flip-badge.pre { background:#FFF3E0; color:#B8862D; }
+  .flip-badge.post { background:#E6F0EB; color:#0E3B33; }
   .field { margin-bottom:14px; }
   .checkbox-row { display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:700; color:var(--ink); margin-bottom:14px; cursor:pointer; }
   .checkbox-row input { width:16px; height:16px; accent-color:var(--green); flex-shrink:0; }
@@ -168,6 +173,10 @@
           <button data-v="cash" class="on" data-i18n="mode_cash" onclick="setMode('fin','cash')">Наличные</button>
           <button data-v="mortgage" data-i18n="mode_mortgage" onclick="setMode('fin','mortgage')">Ипотека</button>
         </div>
+        <div class="toggle" id="tg-strategy">
+          <button data-v="rent" class="on" data-i18n="mode_rent_strategy" onclick="setMode('strategy','rent')">Аренда</button>
+          <button data-v="flip" data-i18n="mode_flip" onclick="setMode('strategy','flip')">Flip</button>
+        </div>
         <div class="toggle" id="tg-rent">
           <button data-v="long" class="on" data-i18n="mode_long" onclick="setMode('rent','long')">Долгосрок</button>
           <button data-v="short" data-i18n="mode_short" onclick="setMode('rent','short')">Краткосрок</button>
@@ -218,7 +227,8 @@
         </div>
         <div class="field" id="f-horizon">
           <div class="f-label" data-i18n="lbl_horizonYears">Горизонт удержания</div>
-          <div class="f-box"><input id="horizonYears" inputmode="decimal" value="5" oninput="recalc()"><span class="suffix" data-i18n="years_unit">лет</span></div>
+          <div class="f-box"><input id="horizonYears" inputmode="decimal" value="5" oninput="recalc()"><button class="suffix-btn" id="horizonUnitBtn" onclick="toggleHorizonUnit()">лет</button></div>
+          <div class="f-hint" id="horizonHint"></div>
         </div>
         <div class="field" id="f-exitCosts">
           <div class="f-label" data-i18n="lbl_exitCosts">Расходы на выход</div>
@@ -327,6 +337,20 @@
         </div>
       </div>
 
+      <!-- ── Flip: exit price ───────────────────────────── -->
+      <div class="section hidden" id="sec-flip">
+        <div class="sec-title" data-i18n="lbl_exit_price_mode">Цена выхода</div>
+        <div class="toggle" id="tg-exitPriceMode">
+          <button data-v="growth" class="on" data-i18n="mode_exit_growth" onclick="setMode('exitPriceMode','growth')">По прогнозу роста</button>
+          <button data-v="custom" data-i18n="mode_exit_custom" onclick="setMode('exitPriceMode','custom')">Своя цена</button>
+        </div>
+        <div class="field hidden" id="f-custom-exit">
+          <div class="f-label" data-i18n="lbl_custom_exit_price">Цена продажи</div>
+          <div class="f-box"><input id="customExitPrice" inputmode="decimal" value="0" oninput="recalc()"><span class="suffix">AED</span></div>
+          <div class="f-hint" id="impliedGrowthHint"></div>
+        </div>
+      </div>
+
       <!-- ── Commercial: Rent ────────────────────────────── -->
       <div class="section hidden" id="sec-comm-rent">
         <div class="sec-title" data-i18n="sec_comm_rent">Аренда</div>
@@ -407,10 +431,14 @@
             <div class="f-label" data-i18n="lbl_sc">Service charge</div>
             <div class="f-box"><input id="scRate" inputmode="decimal" value="18" oninput="recalc()"><span class="suffix">AED/sqft</span></div>
           </div>
-          <div class="field">
+          <div class="field" id="f-maint">
             <div class="f-label" data-i18n="lbl_maint">Ремонт / резерв</div>
             <div class="f-box"><input id="maintenance" inputmode="decimal" value="3000" oninput="recalc()"><span class="suffix" data-i18n="aed_year">AED/год</span></div>
           </div>
+        </div>
+        <div class="field hidden" id="f-flip-renovation">
+          <div class="f-label" data-i18n="lbl_flip_renovation">Ремонт / улучшения (flip)</div>
+          <div class="f-box"><input id="flipRenovation" inputmode="decimal" value="0" oninput="recalc()"><span class="suffix">AED</span></div>
         </div>
         <div class="cols2">
           <div class="field" id="f-mgmt">
@@ -480,6 +508,9 @@ const TR = {
     sec_short:'Краткосрочная аренда', lbl_adr:'ADR — ставка/ночь',
     lbl_adr_off:'Ожидаемый ADR после handover',
     lbl_operator:'Оператор', hint_operator:'обычно 15–25%', lbl_utilities:'DEWA + интернет',
+    mode_flip:'Flip', mode_rent_strategy:'Аренда', lbl_strategy:'Стратегия',
+    lbl_exit_price_mode:'Цена выхода', mode_exit_growth:'По прогнозу роста', mode_exit_custom:'Своя цена',
+    lbl_custom_exit_price:'Цена продажи', lbl_flip_renovation:'Ремонт / улучшения (flip)',
     sec_opex:'Ежегодные расходы и прогноз', sec_opex_off:'Ежегодные расходы и прогноз (после handover)',
     lbl_sc:'Service charge', lbl_maint:'Ремонт / резерв',
     lbl_mgmt:'Управление', hint_mgmt:'0 — если сам', lbl_growth:'Рост цены',
@@ -531,6 +562,9 @@ const TR = {
     sec_short:'Short-term Rental', lbl_adr:'ADR — nightly rate',
     lbl_adr_off:'Expected ADR post-handover',
     lbl_operator:'Operator', hint_operator:'typically 15–25%', lbl_utilities:'DEWA + internet',
+    mode_flip:'Flip', mode_rent_strategy:'Rental', lbl_strategy:'Strategy',
+    lbl_exit_price_mode:'Exit price', mode_exit_growth:'Growth forecast', mode_exit_custom:'Custom price',
+    lbl_custom_exit_price:'Sale price', lbl_flip_renovation:'Renovation / improvements',
     sec_opex:'Annual Expenses & Forecast', sec_opex_off:'Annual Expenses & Forecast (post-handover)',
     lbl_sc:'Service charge', lbl_maint:'Repairs / reserve',
     lbl_mgmt:'Management', hint_mgmt:'0 — self-managed', lbl_growth:'Capital growth',
@@ -592,7 +626,8 @@ function setLang(lang) { applyLang(lang); }
 
 // ─── State ───────────────────────────────────────────────────────────────────
 const M = { type:'residential', prop:'ready', fin:'cash', rent:'long',
-  comm:'office', commVatDeal:'ontop', commRentMode:'sqft', commRentVat:'ontop', commFitoutWho:'tenant' };
+  comm:'office', commVatDeal:'ontop', commRentMode:'sqft', commRentVat:'ontop', commFitoutWho:'tenant',
+  strategy:'rent', horizonUnit:'yrs', exitPriceMode:'growth' };
 
 const num = id => {
   const el = document.getElementById(id);
@@ -636,20 +671,33 @@ function syncVisibility() {
   const isOff   = M.prop === 'offplan';
   const isMort  = M.fin === 'mortgage' && !isOff && !isCom;
   const isShort = M.rent === 'short' && !isCom;
+  const isFlip  = M.strategy === 'flip';
 
   // Type-level
   document.getElementById('tg-comm').classList.toggle('hidden', !isCom);
   document.getElementById('tg-fin').classList.toggle('hidden', isOff || isCom);
-  document.getElementById('tg-rent').classList.toggle('hidden', isCom);
+  document.getElementById('tg-rent').classList.toggle('hidden', isCom || isFlip);
   document.getElementById('f-furnishing').classList.toggle('hidden', isCom);
   document.getElementById('f-comm-vat-deal').classList.toggle('hidden', !isCom);
 
   // Residential-only rent sections
-  document.getElementById('sec-long').classList.toggle('hidden', isShort || isCom);
-  document.getElementById('sec-short').classList.toggle('hidden', !isShort || isCom);
+  document.getElementById('sec-long').classList.toggle('hidden', isShort || isCom || isFlip);
+  document.getElementById('sec-short').classList.toggle('hidden', !isShort || isCom || isFlip);
+
+  // Flip section
+  document.getElementById('sec-flip').classList.toggle('hidden', !isFlip);
+  document.getElementById('f-custom-exit').classList.toggle('hidden', !isFlip || M.exitPriceMode !== 'custom');
+  document.getElementById('f-flip-renovation').classList.toggle('hidden', !isFlip);
+  document.getElementById('f-maint').classList.toggle('hidden', isFlip);
+
+  // Initialize custom exit price to property price when user first opens it
+  if (isFlip && M.exitPriceMode === 'custom') {
+    const el = document.getElementById('customExitPrice');
+    if (el && (el.value === '0' || el.value === '')) el.value = num('price');
+  }
 
   // Commercial sections
-  document.getElementById('sec-comm-rent').classList.toggle('hidden', !isCom);
+  document.getElementById('sec-comm-rent').classList.toggle('hidden', !isCom || isFlip);
   document.getElementById('sec-comm-fitout').classList.toggle('hidden', !isCom);
   const isSqft = M.commRentMode === 'sqft';
   document.getElementById('f-comm-rent-sqft').classList.toggle('hidden', !isSqft);
@@ -659,7 +707,7 @@ function syncVisibility() {
       M.commFitoutWho === 'tenant' ? t('hint_comm_fitout_tenant') : (LANG === 'en' ? 'included in entry cost' : 'включается в стоимость входа');
   }
   // Update toggles highlight
-  ['commVatDeal','commRentMode','commRentVat','commFitoutWho'].forEach(key => {
+  ['commVatDeal','commRentMode','commRentVat','commFitoutWho','strategy','exitPriceMode'].forEach(key => {
     const tg = document.getElementById('tg-' + key);
     if (tg) tg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === M[key]));
   });
@@ -667,7 +715,7 @@ function syncVisibility() {
   // Shared
   document.getElementById('sec-offplan').classList.toggle('hidden', !isOff);
   document.getElementById('sec-mortgage').classList.toggle('hidden', !isMort);
-  document.getElementById('f-mgmt').classList.toggle('hidden', isShort);
+  document.getElementById('f-mgmt').classList.toggle('hidden', isShort || isFlip);
   document.getElementById('f-growth').classList.toggle('hidden', isOff);
   document.getElementById('f-occ-long').classList.toggle('hidden', !isShort);
 
@@ -682,6 +730,7 @@ function syncVisibility() {
     if (el) el.value = fmt(area * rate);
   }
 
+  updateHorizonHint();
   updatePlanCheck();
 }
 
@@ -728,6 +777,162 @@ function sanitizeInputs() {
   document.querySelectorAll('.f-box input').forEach(el => {
     el.value = el.value.replace(/[^\d.,]/g, '');
   });
+}
+
+// ─── Horizon helpers ─────────────────────────────────────────────────────────
+function getHorizonYrs() {
+  const v = num('horizonYears');
+  return M.horizonUnit === 'mos' ? Math.max(1/12, v) / 12 : Math.max(0.1, v);
+}
+
+function toggleHorizonUnit() {
+  const val = num('horizonYears');
+  if (M.horizonUnit === 'yrs') {
+    M.horizonUnit = 'mos';
+    document.getElementById('horizonYears').value = Math.max(1, Math.round(val * 12));
+  } else {
+    M.horizonUnit = 'yrs';
+    document.getElementById('horizonYears').value = parseFloat((Math.max(1/12, val / 12)).toFixed(2));
+  }
+  updateHorizonHint();
+  recalc();
+}
+
+function updateHorizonHint() {
+  const btn = document.getElementById('horizonUnitBtn');
+  const hint = document.getElementById('horizonHint');
+  const val = num('horizonYears');
+  const EN = LANG === 'en';
+  if (M.horizonUnit === 'mos') {
+    if (btn) btn.textContent = EN ? 'mo' : 'мес.';
+    if (hint) { const y = val / 12; hint.textContent = `= ${fmt(y, y%1===0?0:1)} ${declYears(y)}`; }
+  } else {
+    if (btn) btn.textContent = EN ? 'yrs' : 'лет';
+    const mos = Math.round(val * 12);
+    if (hint) hint.textContent = `= ${mos} ${EN ? (mos===1?'month':'months') : declMonths(mos)}`;
+  }
+}
+
+// ─── Flip IRR (ready property) ───────────────────────────────────────────────
+function computeReadyFlipIRR(horizonMos, totalInvested, scMonthly, salePrice, exitCosts) {
+  if (horizonMos < 1) return null;
+  const flows = new Array(horizonMos + 1).fill(0);
+  flows[0] = -totalInvested;
+  for (let m = 1; m <= horizonMos; m++) flows[m] -= scMonthly;
+  flows[horizonMos] += salePrice - exitCosts;
+  const mr = solveIRR(flows);
+  return mr === null ? null : (Math.pow(1 + mr, 12) - 1) * 100;
+}
+
+// ─── Flip calculation ─────────────────────────────────────────────────────────
+function calcFlipResult(base) {
+  const { P, isOff, entry, dealCosts, furn, dld, commission, vat, trustee, oqood, isMort, vatEnabled } = base;
+  const horizYrs = base.horizYrs;
+  const horizMos = Math.max(1, Math.round(horizYrs * 12));
+  const exitCostsPct = base.exitCostsPct;
+  const area = num('area');
+  const scRate = num('scRate');
+  const scMonthly = area * scRate / 12;
+  const renovation = Math.max(0, num('flipRenovation'));
+
+  const growthPre  = isOff ? num('growthPre')  : 0;
+  const growthPost = isOff ? num('growthPost') : 0;
+  const growth     = isOff ? 0 : num('growth');
+  const toHandoverMos = isOff ? num('handoverMonths') : 0;
+  const toHandoverYrs = toHandoverMos / 12;
+  const paidPct    = isOff ? num('paidPct')    : 0;
+  const handoverPct= isOff ? num('handoverPct'): 0;
+  const dealFees   = isOff ? dld + oqood + commission + vat : dealCosts;
+
+  const preHandover = isOff && horizMos <= Math.round(toHandoverMos);
+
+  // ── Sale price ──
+  let salePrice;
+  if (M.exitPriceMode === 'custom') {
+    salePrice = Math.max(0, num('customExitPrice'));
+  } else if (isOff) {
+    const valueAtHandover = P * Math.pow(1 + growthPre/100, toHandoverYrs);
+    salePrice = preHandover
+      ? P * Math.pow(1 + growthPre/100, horizYrs)
+      : valueAtHandover * Math.pow(1 + growthPost/100, horizYrs - toHandoverYrs);
+  } else {
+    salePrice = P * Math.pow(1 + growth/100, horizYrs);
+  }
+
+  const exitCosts = salePrice * exitCostsPct / 100;
+
+  // ── Invested & profit ──
+  let invested, proceeds, profit, constrPaid = 0, developerBalance = 0, scHolding = 0, holdingMos = 0;
+
+  if (preHandover) {
+    constrPaid = toHandoverMos > 0 ? P * (paidPct/100) * horizMos / Math.round(toHandoverMos) : 0;
+    developerBalance = P - constrPaid;
+    invested  = constrPaid + dealFees;
+    proceeds  = salePrice - developerBalance;
+    profit    = proceeds - invested - exitCosts;
+    scHolding = 0; holdingMos = 0;
+  } else {
+    holdingMos = isOff ? Math.max(0, horizMos - Math.round(toHandoverMos)) : horizMos;
+    scHolding  = scMonthly * holdingMos;
+    invested   = (isOff ? entry : entry) + renovation;
+    proceeds   = salePrice - exitCosts;
+    profit     = proceeds - invested - scHolding;
+  }
+
+  const roi  = invested > 0 ? profit / invested * 100 : 0;
+  const cagr = horizYrs > 0 ? (Math.pow(1 + Math.max(roi, -99)/100, 1/horizYrs) - 1) * 100 : 0;
+
+  // ── Break-even ──
+  const ef = 1 - exitCostsPct/100;
+  const salePrice_BE = preHandover
+    ? (ef > 0 ? (P + dealFees) / ef : 0)
+    : (ef > 0 ? (invested + scHolding) / ef : 0);
+  const breakEvenGrowth = (horizYrs > 0 && salePrice_BE > 0 && P > 0)
+    ? (Math.pow(salePrice_BE / P, 1/horizYrs) - 1) * 100 : 0;
+
+  // ── IRR ──
+  let irrAnnual = null;
+  try {
+    if (preHandover) {
+      irrAnnual = computeOffplanIRRNew(
+        Math.max(1, Math.round(toHandoverMos)), horizMos,
+        paidPct, 0, dealFees, 0, P, 0, proceeds - exitCosts
+      );
+    } else if (isOff) {
+      irrAnnual = computeOffplanIRRNew(
+        Math.max(1, Math.round(toHandoverMos)), horizMos,
+        paidPct, handoverPct, dealFees, furn + renovation, P,
+        -scMonthly * 12, salePrice - exitCosts
+      );
+    } else {
+      irrAnnual = computeReadyFlipIRR(horizMos, entry + renovation, scMonthly, salePrice, exitCosts);
+    }
+  } catch(e) {}
+
+  // ── Implied growth when custom price ──
+  const impliedGrowth = (M.exitPriceMode === 'custom' && horizYrs > 0 && P > 0 && salePrice > 0)
+    ? (Math.pow(salePrice / P, 1/horizYrs) - 1) * 100 : null;
+
+  const flip = {
+    preHandover, salePrice, exitCosts, exitCostsPct, proceeds,
+    invested, developerBalance, constrPaid, dealFees,
+    profit, roi, cagr, irrAnnual, breakEvenGrowth,
+    scHolding, holdingMos, renovation, impliedGrowth, horizMos,
+    toHandoverMos: Math.round(toHandoverMos),
+  };
+
+  return {
+    P, isOff, isMort, isShort: false, isCom: false, isFlip: true, vatEnabled,
+    dld, commission, vat, trustee, oqood, dealCosts, furn, entry, cashInvested: invested,
+    down: base.down||0, loan: base.loan||0, mortgageReg: base.mortgageReg||0, bankFee: base.bankFee||0,
+    valuation: base.valuation||0, monthlyPayment: base.monthlyPayment||0, debtService: base.debtService||0,
+    grossRevenue: 0, effRevenue: 0, operatorFee: 0, util: 0,
+    serviceCharge: 0, mgmt: 0, maint: 0, opex: 0, noi: 0, cashFlow: 0,
+    grossYield: 0, netYield: 0, coc: 0, payback: Infinity,
+    value5: salePrice, rentYears: 0, totalReturn5: roi, annualized5: cagr,
+    horizYrs, horizMos, exitCostsPct, exitCosts, rentIndexPct: 0, vacancyMonths: 0, cumIncome: 0,
+    offplan: null, flip,
+  };
 }
 
 function npv(rate, flows) {
@@ -794,6 +999,15 @@ function calc() {
   const cashInvested= isMort ? down + dealCosts + furn : entry;
 
   const exitCostsPct  = Math.max(0, num('exitCostsPct'));
+
+  // ── Flip mode ──
+  if (M.strategy === 'flip') {
+    const horizYrs = getHorizonYrs();
+    return calcFlipResult({ P, isOff, isMort, entry, dealCosts, furn,
+      dld, commission, vat, trustee, oqood, vatEnabled,
+      down, loan, mortgageReg, bankFee, valuation, monthlyPayment, debtService,
+      horizYrs, exitCostsPct });
+  }
   const rentIndexPct  = !isShort ? Math.max(0, num('rentIndexPct')) : 0;
   const vacancyMonths = !isShort ? Math.max(0, Math.min(11.9, num('vacancyMonths'))) : 0;
 
@@ -824,7 +1038,7 @@ function calc() {
   let cumIncome = 0, exitCostsOut = 0;
 
   if (isOff) {
-    const horizonYears  = Math.max(0.1, num('horizonYears'));
+    const horizonYears  = getHorizonYrs();
     horizYrs = horizonYears;
     const handoverMos   = num('handoverMonths');
     const paidPct       = num('paidPct');
@@ -888,7 +1102,7 @@ function calc() {
     };
   } else {
     const growth    = num('growth');
-    horizYrs        = Math.max(0.1, num('horizonYears'));
+    horizYrs        = getHorizonYrs();
     value5          = P*Math.pow(1+growth/100, horizYrs);
     rentYears       = horizYrs;
     const baseInvest= cashInvested;
@@ -931,6 +1145,16 @@ function calcCommercial() {
 
   const dealCosts = dld + commission + vatOnComm + trustee + oqood + commDealVat;
   const entry     = P + dealCosts + fitoutInEntry;
+
+  // ── Flip mode ──
+  if (M.strategy === 'flip') {
+    const horizYrs = getHorizonYrs();
+    const exitCostsPct = Math.max(0, num('exitCostsPct'));
+    return calcFlipResult({ P, isOff, isMort: false, entry, dealCosts, furn: fitoutInEntry,
+      dld, commission, vat: vatOnComm + commDealVat, trustee, oqood, vatEnabled: false,
+      down: 0, loan: 0, mortgageReg: 0, bankFee: 0, valuation: 0, monthlyPayment: 0, debtService: 0,
+      horizYrs, exitCostsPct });
+  }
 
   // Rent
   const isSqft       = M.commRentMode === 'sqft';
@@ -981,7 +1205,7 @@ function calcCommercial() {
   }
 
   let value5, totalReturn5, annualized5, offplan = null;
-  const horizYrs = Math.max(0.1, num('horizonYears'));
+  const horizYrs = getHorizonYrs();
   const exitCostsPct = Math.max(0, num('exitCostsPct'));
   let exitCostsOut = 0, cumH = 0;
 
@@ -1060,6 +1284,82 @@ function recalc() {
   const commLabel = r.vatEnabled
     ? (EN ? `Commission ${num('commPct')}% + VAT 5%` : `Комиссия ${num('commPct')}% + VAT 5%`)
     : (EN ? `Commission ${num('commPct')}%`          : `Комиссия ${num('commPct')}%`);
+
+  // Update implied growth hint for custom flip exit price
+  if (r.isFlip && r.flip) {
+    const hintEl = document.getElementById('impliedGrowthHint');
+    if (hintEl) {
+      hintEl.textContent = r.flip.impliedGrowth !== null
+        ? (EN ? `≈ ${fmt(r.flip.impliedGrowth,1)}%/yr implied growth` : `≈ ${fmt(r.flip.impliedGrowth,1)}% годовых подразумеваемый рост`)
+        : '';
+    }
+  }
+
+  // ── Flip results branch ────────────────────────────────
+  if (r.isFlip && r.flip) {
+    const f = r.flip;
+    const flipColor = f.roi >= 8 ? 'var(--green)' : f.roi >= 3 ? 'var(--brass)' : 'var(--red)';
+    const phaseLabel = f.preHandover
+      ? (EN ? `Assignment · exit at month ${f.horizMos} (before handover at month ${f.toHandoverMos})`
+             : `Переуступка · выход на ${f.horizMos} мес. (до handover на ${f.toHandoverMos} мес.)`)
+      : (r.isOff
+          ? (EN ? `Post-handover · ${f.holdingMos} month${f.holdingMos===1?'':'s'} holding after handover`
+                : `После handover · владение ${f.holdingMos} ${declMonths(f.holdingMos)} после handover`)
+          : (EN ? `Flip · ${f.horizMos} month${f.horizMos===1?'':'s'} holding`
+                : `Flip · владение ${f.horizMos} ${declMonths(f.horizMos)}`));
+    const badge = f.preHandover
+      ? `<span class="flip-badge pre">${EN?'Assignment':'Переуступка'}</span>`
+      : `<span class="flip-badge post">${EN?'Post-HO':'После HO'}</span>`;
+
+    let html2 = `
+    <div class="hero">
+      <div class="kl">ROI</div>
+      <div class="kl">${EN ? 'CAGR / annualized' : 'Годовых (CAGR)'}</div>
+      <div class="kv" style="color:${f.roi>=0?'#A8D8C0':'#E8B59F'}">${fmt(f.roi,1)}%</div>
+      <div class="kv">${fmt(f.cagr,2)}%</div>
+      <div class="kd">${EN ? 'profit / invested' : 'прибыль / вложено'}</div>
+      <div class="kd">${EN ? `over ${f.horizMos} months` : `за ${f.horizMos} ${declMonths(f.horizMos)}`}</div>
+    </div>`;
+
+    html2 += `<div class="section"><div class="sec-title">${EN ? 'Entry Cost' : 'Стоимость входа'}</div>`
+    + row(EN ? 'Property price' : 'Цена объекта', fmt(r.P)+' AED')
+    + row(`DLD ${num('dldPct')}%`, fmt(r.dld)+' AED', {indent:1})
+    + row(commLabel, fmt(r.commission+r.vat)+' AED', {indent:1})
+    + (r.isOff ? row('Oqood', fmt(r.oqood)+' AED', {indent:1}) : row('Trustee', fmt(r.trustee)+' AED', {indent:1}))
+    + (r.furn>0 ? row(EN?'Furnishing':'Меблировка', fmt(r.furn)+' AED', {indent:1}) : '')
+    + row(EN ? 'Total entry cost' : 'Итого вход', fmt(r.entry)+' AED', {bold:1})
+    + `</div>`;
+
+    html2 += `<div class="section"><div class="sec-title">${EN?'Flip · Exit in '+f.horizMos+' months':'Flip · выход через '+f.horizMos+' '+declMonths(f.horizMos)} ${badge}</div>`
+    + `<div class="f-hint" style="margin-bottom:10px">${phaseLabel}</div>`
+    + row(EN?'Total invested':'Вложено', fmt(f.invested)+' AED', {bold:1});
+
+    if (f.preHandover) {
+      html2 += row(EN?`  Construction payments (${Math.round(f.horizMos/f.toHandoverMos*100)}% of ${fmt(num('paidPct'),0)}%)`
+                     :`  Строительные платежи (${Math.round(f.horizMos/f.toHandoverMos*100)}% от ${fmt(num('paidPct'),0)}%)`,
+                fmt(f.constrPaid)+' AED', {indent:1})
+               + row(EN?'  Deal fees':'  Сборы (DLD, Oqood, комиссия)', fmt(f.dealFees)+' AED', {indent:1});
+    } else {
+      html2 += row(EN?'  (full entry cost + renovation)':'  (вход + ремонт)', '', {indent:1});
+      if (f.renovation > 0) html2 += row(EN?'  Renovation / improvements':'  Ремонт / улучшения', fmt(f.renovation)+' AED', {indent:1});
+    }
+
+    html2 += row(EN?'Sale price':'Цена продажи', fmt(f.salePrice)+' AED')
+    + (f.preHandover ? row(EN?'Developer balance (remaining obligation)':'Остаток обязательства перед застройщиком', '−'+fmt(f.developerBalance)+' AED', {indent:1, color:'var(--red)'}) : '')
+    + (f.preHandover ? row(EN?'Proceeds (received)':'Получено на руки', fmt(f.proceeds)+' AED', {bold:1}) : '')
+    + row(EN?`Exit costs (${fmt(f.exitCostsPct,1)}%)`:`Расходы на выход (${fmt(f.exitCostsPct,1)}%)`, '−'+fmt(f.exitCosts)+' AED', {indent:1, color:'var(--red)'})
+    + (!f.preHandover && f.scHolding > 0 ? row(EN?`Service charge (${f.holdingMos} mo holding)`:`Service charge (${f.holdingMos} ${declMonths(f.holdingMos)} владения)`, '−'+fmt(f.scHolding)+' AED', {indent:1, color:'var(--red)'}) : '')
+    + row(EN?'Profit':'Прибыль', (f.profit>=0?'+':'')+fmt(f.profit)+' AED', {bold:1, color: f.profit>=0?'var(--green)':'var(--red)'})
+    + row('ROI', fmt(f.roi,1)+'%', {bold:1, color:flipColor})
+    + row(EN?'CAGR (annualized)':'Годовых (CAGR)', fmt(f.cagr,2)+'%')
+    + (f.irrAnnual !== null ? row('IRR', fmt(f.irrAnnual,1)+'%') : '')
+    + row(EN?`Break-even at growth`:`Выход в ноль при росте`, fmt(f.breakEvenGrowth,1)+'%/'+t('year_unit'))
+    + `</div>`;
+
+    html2 += `<button class="btn gray" style="width:100%;margin-bottom:8px" onclick="saveToHistory(this)">${t('btn_save')}</button>`;
+    document.getElementById('results').innerHTML = html2;
+    return;
+  }
 
   // ── Commercial results branch ─────────────────────────
   if (r.isCom) {
@@ -1252,6 +1552,61 @@ function buildReport() {
   const name  = document.getElementById('projectName').value || (EN ? 'Property' : 'Объект недвижимости');
   const today = new Date().toLocaleDateString(LANG === 'en' ? 'en-GB' : 'ru-RU');
   const aed_mo = EN ? 'AED/mo' : 'AED/мес';
+
+  // ── Flip report branch ───────────────────────────────
+  if (r.isFlip && r.flip) {
+    const f = r.flip;
+    const commLabel2 = r.vatEnabled
+      ? (EN ? `Commission ${num('commPct')}% + VAT` : `Комиссия ${num('commPct')}% + VAT`)
+      : (EN ? `Commission ${num('commPct')}%` : `Комиссия ${num('commPct')}%`);
+    const scenLabel = [
+      EN ? 'Flip' : 'Flip',
+      r.isOff ? (EN?'Off-plan':'Офф-план') : (EN?'Ready':'Готовый'),
+      f.preHandover ? (EN?'Assignment':'Переуступка') : (EN?'Post-handover':'После HO'),
+      fmt(num('area'))+' sqft'
+    ].join(' · ');
+    const footer = EN
+      ? `Indicative analysis only. Capital growth is an assumption. Exit costs ${fmt(f.exitCostsPct,1)}% of sale price. · ${today}`
+      : `Расчёт носит оценочный характер. Рост цены — допущение. Расходы на выход ${fmt(f.exitCostsPct,1)}% от цены продажи. · ${today}`;
+    let rHtml = `
+    <div class="rep-head">
+      <div class="eyebrow">Flip Analysis · Dubai · ${today}</div>
+      <h2>${name}</h2>
+      <div style="font-size:13px;color:var(--sub)">${scenLabel}</div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="l">ROI</div><div class="v">${fmt(f.roi,1)}%</div></div>
+      <div class="kpi"><div class="l">${EN?'CAGR':'Годовых'}</div><div class="v">${fmt(f.cagr,2)}%</div></div>
+      <div class="kpi"><div class="l">${EN?'IRR':'IRR'}</div><div class="v">${f.irrAnnual!==null?fmt(f.irrAnnual,1)+'%':'—'}</div></div>
+    </div>`;
+    rHtml += `<div class="rep-section"><h3>${EN?'Entry Cost':'Стоимость входа'}</h3>`
+    + row(EN?'Property price':'Цена объекта', fmt(r.P)+' AED')
+    + row(`DLD ${num('dldPct')}%`, fmt(r.dld)+' AED', {indent:1})
+    + row(commLabel2, fmt(r.commission+r.vat)+' AED', {indent:1})
+    + (r.isOff ? row('Oqood',fmt(r.oqood)+' AED',{indent:1}) : row('Trustee',fmt(r.trustee)+' AED',{indent:1}))
+    + (r.furn>0 ? row(EN?'Furnishing':'Меблировка',fmt(r.furn)+' AED',{indent:1}) : '')
+    + row(EN?'Total entry cost':'Итого вход', fmt(r.entry)+' AED', {bold:1})
+    + `</div>`;
+    rHtml += `<div class="rep-section"><h3>${EN?`Flip · exit in ${f.horizMos} months`:`Flip · выход через ${f.horizMos} ${declMonths(f.horizMos)}`}</h3>`
+    + row(EN?'Total invested':'Вложено', fmt(f.invested)+' AED', {bold:1})
+    + (f.preHandover ? row(EN?'  Construction payments':'  Строительные платежи', fmt(f.constrPaid)+' AED', {indent:1}) : '')
+    + (f.preHandover ? row(EN?'  Deal fees':'  Сборы', fmt(f.dealFees)+' AED', {indent:1}) : '')
+    + (f.renovation>0 ? row(EN?'  Renovation':'  Ремонт/улучшения', fmt(f.renovation)+' AED', {indent:1}) : '')
+    + row(EN?'Sale price':'Цена продажи', fmt(f.salePrice)+' AED')
+    + (f.preHandover ? row(EN?'Developer balance (obligation)':'Остаток обязательства перед застройщиком', '−'+fmt(f.developerBalance)+' AED', {indent:1, color:'var(--red)'}) : '')
+    + (f.preHandover ? row(EN?'Proceeds':'Получено на руки', fmt(f.proceeds)+' AED') : '')
+    + row(EN?`Exit costs (${fmt(f.exitCostsPct,1)}%)`:`Расходы на выход (${fmt(f.exitCostsPct,1)}%)`, '−'+fmt(f.exitCosts)+' AED', {indent:1, color:'var(--red)'})
+    + (f.scHolding>0 ? row(EN?`Service charge (${f.holdingMos} mo)`:`SC (${f.holdingMos} ${declMonths(f.holdingMos)})`, '−'+fmt(f.scHolding)+' AED', {indent:1, color:'var(--red)'}) : '')
+    + row(EN?'Profit':'Прибыль', (f.profit>=0?'+':'')+fmt(f.profit)+' AED', {bold:1, color:f.profit>=0?'var(--green)':'var(--red)'})
+    + row('ROI', fmt(f.roi,1)+'%', {bold:1, color:'var(--green)'})
+    + row(EN?'CAGR (annualized)':'Годовых (CAGR)', fmt(f.cagr,2)+'%')
+    + (f.irrAnnual!==null ? row('IRR', fmt(f.irrAnnual,1)+'%') : '')
+    + row(EN?'Break-even growth':'Выход в ноль при росте', fmt(f.breakEvenGrowth,1)+'%/'+t('year_unit'))
+    + `</div>`;
+    rHtml += `<div class="rep-foot">${footer}</div>`;
+    document.getElementById('report').innerHTML = rHtml;
+    return;
+  }
 
   // ── Commercial report branch ──────────────────────────
   if (r.isCom) {
@@ -1566,11 +1921,12 @@ function collectSnapshot() {
   ['price','area','dldPct','commPct','furnishing','rent','adr','occShort',
    'operatorPct','utilities','scRate','maintenance','mgmtPct','growth',
    'downPct','ratePct','termYears','horizonYears','exitCostsPct','handoverMonths','paidPct','handoverPct',
-   'growthPre','growthPost','rentIndexPct','vacancyMonths'].forEach(id => {
+   'growthPre','growthPost','rentIndexPct','vacancyMonths','flipRenovation','customExitPrice'].forEach(id => {
     const el = document.getElementById(id);
     if (el) inputs[id] = el.value;
   });
   inputs.vatEnabled = document.getElementById('vatEnabled').checked;
+  inputs.horizonUnit = M.horizonUnit;
   return {
     id: Date.now(),
     ts: new Date().toISOString(),
@@ -1614,10 +1970,11 @@ function loadHistoryEntry(id) {
   ['price','area','dldPct','commPct','furnishing','rent','adr','occShort',
    'operatorPct','utilities','scRate','maintenance','mgmtPct','growth',
    'downPct','ratePct','termYears','horizonYears','exitCostsPct','handoverMonths','paidPct','handoverPct',
-   'growthPre','growthPost','rentIndexPct','vacancyMonths'].forEach(id => {
+   'growthPre','growthPost','rentIndexPct','vacancyMonths','flipRenovation','customExitPrice'].forEach(id => {
     const el = document.getElementById(id);
     if (el && inp[id] !== undefined) el.value = inp[id];
   });
+  if (inp.horizonUnit) { M.horizonUnit = inp.horizonUnit; updateHorizonHint(); }
   document.getElementById('projectName').value = snap.name || '';
   if (inp.vatEnabled !== undefined) document.getElementById('vatEnabled').checked = inp.vatEnabled;
   closeHistory();
