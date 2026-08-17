@@ -255,6 +255,21 @@
             <div class="f-hint" data-i18n="hint_handover">платёж при передаче ключей</div>
           </div>
         </div>
+        <label class="checkbox-row" id="f-php-check">
+          <input type="checkbox" id="phpEnabled" onchange="syncVisibility(); recalc()">
+          <span data-i18n="lbl_php">Post-handover план (рассрочка)</span>
+        </label>
+        <div class="cols2 hidden" id="f-php-fields">
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_phpPct">Post-handover, %</div>
+            <div class="f-box" style="background:#F4F5F2"><input id="phpPctDisplay" readonly style="color:var(--sub)"><span class="suffix">%</span></div>
+            <div class="f-hint" data-i18n="hint_phpPct">= 100 − до − на handover</div>
+          </div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_phpMonths">Срок рассрочки</div>
+            <div class="f-box"><input id="phpMonths" inputmode="decimal" value="24" oninput="recalc()"><span class="suffix" data-i18n="months_unit">мес.</span></div>
+          </div>
+        </div>
         <div class="calc-row" id="planCheckRow">
           <span class="l"><span id="planCheckLabel"></span><span class="hint" id="planCheckHint"></span></span>
           <span class="v" id="planCheckVal">—</span>
@@ -525,6 +540,8 @@ const TR = {
     pdf_loading:'Готовлю PDF…', pdf_error:'Не удалось создать PDF: ',
     year_unit:'год', months_unit:'мес.', years_unit:'лет', aed_year:'AED/год', aed_month:'AED/мес',
     pc_post:'Post-handover, %', pc_total:'Итого по плану, %',
+    lbl_php:'Post-handover план (рассрочка)', lbl_phpPct:'Post-handover, %',
+    hint_phpPct:'= 100 − до − на handover', lbl_phpMonths:'Срок рассрочки',
     // Commercial
     mode_residential:'Жилая', mode_commercial:'Коммерческая',
     comm_office:'Офис', comm_retail:'Ритейл', comm_warehouse:'Склад',
@@ -579,6 +596,8 @@ const TR = {
     pdf_loading:'Preparing PDF…', pdf_error:'Could not create PDF: ',
     year_unit:'yr', months_unit:'months', years_unit:'yrs', aed_year:'AED/yr', aed_month:'AED/mo',
     pc_post:'Post-handover, %', pc_total:'Payment plan total, %',
+    lbl_php:'Post-handover plan (installment)', lbl_phpPct:'Post-handover, %',
+    hint_phpPct:'= 100 − pre − on handover', lbl_phpMonths:'PHP duration',
     // Commercial
     mode_residential:'Residential', mode_commercial:'Commercial',
     comm_office:'Office', comm_retail:'Retail', comm_warehouse:'Warehouse',
@@ -714,6 +733,9 @@ function syncVisibility() {
 
   // Shared
   document.getElementById('sec-offplan').classList.toggle('hidden', !isOff);
+  const phpChecked = isOff && (document.getElementById('phpEnabled')?.checked || false);
+  document.getElementById('f-php-check').classList.toggle('hidden', !isOff);
+  document.getElementById('f-php-fields').classList.toggle('hidden', !phpChecked);
   document.getElementById('sec-mortgage').classList.toggle('hidden', !isMort);
   document.getElementById('f-mgmt').classList.toggle('hidden', isShort || isFlip);
   document.getElementById('f-growth').classList.toggle('hidden', isOff);
@@ -756,20 +778,42 @@ function updatePlanCheck() {
   const labelEl = document.getElementById('planCheckLabel');
   const valEl   = document.getElementById('planCheckVal');
   const hintEl  = document.getElementById('planCheckHint');
+  const EN = LANG === 'en';
+  const phpEnabledEl = document.getElementById('phpEnabled');
+  const phpEnabled = phpEnabledEl?.checked || false;
 
-  const total = paid + handover;
-  labelEl.textContent = t('pc_total');
-  valEl.textContent   = fmt(total, 1) + '%';
-  if (Math.abs(total - 100) > 0.001) {
-    rowEl.classList.add('err');
-    hintEl.textContent = LANG === 'en'
-      ? `Must total 100% (currently ${fmt(total,1)}%) — check percentages`
-      : `«До handover» + «На handover» должны давать 100% (сейчас ${fmt(total,1)}%) — проверьте проценты`;
+  if (phpEnabled) {
+    const phpPctRaw = 100 - paid - handover;
+    const phpDisp = document.getElementById('phpPctDisplay');
+    if (phpDisp) phpDisp.value = fmt(Math.max(0, phpPctRaw), 1);
+    labelEl.textContent = t('pc_post');
+    valEl.textContent = fmt(phpPctRaw, 1) + '%';
+    if (phpPctRaw < -0.001) {
+      rowEl.classList.add('err');
+      hintEl.textContent = EN
+        ? `Pre + On handover exceed 100% — no room for PHP`
+        : `«До» + «На handover» превышают 100% — нет места для PHP`;
+    } else {
+      rowEl.classList.remove('err');
+      hintEl.textContent = EN
+        ? `PHP = 100% − pre (${fmt(paid,1)}%) − on (${fmt(handover,1)}%)`
+        : `PHP = 100% − до (${fmt(paid,1)}%) − на handover (${fmt(handover,1)}%)`;
+    }
   } else {
-    rowEl.classList.remove('err');
-    hintEl.textContent = LANG === 'en'
-      ? `Pre + On handover = 100%`
-      : `«До handover» + «На handover» = 100%`;
+    const total = paid + handover;
+    labelEl.textContent = t('pc_total');
+    valEl.textContent   = fmt(total, 1) + '%';
+    if (Math.abs(total - 100) > 0.001) {
+      rowEl.classList.add('err');
+      hintEl.textContent = EN
+        ? `Must total 100% (currently ${fmt(total,1)}%) — check percentages`
+        : `«До handover» + «На handover» должны давать 100% (сейчас ${fmt(total,1)}%) — проверьте проценты`;
+    } else {
+      rowEl.classList.remove('err');
+      hintEl.textContent = EN
+        ? `Pre + On handover = 100%`
+        : `«До handover» + «На handover» = 100%`;
+    }
   }
 }
 
@@ -835,6 +879,10 @@ function calcFlipResult(base) {
   const scMonthly = area * scRate / 12;
   const renovation = Math.max(0, num('flipRenovation'));
 
+  const phpOn        = base.phpOn || false;
+  const phpPct       = base.phpPct || 0;
+  const phpMonthsVal = base.phpMonthsVal || 0;
+
   const growthPre  = isOff ? num('growthPre')  : 0;
   const growthPost = isOff ? num('growthPost') : 0;
   const growth     = isOff ? 0 : num('growth');
@@ -863,10 +911,14 @@ function calcFlipResult(base) {
 
   // ── Invested & profit ──
   let invested, proceeds, profit, constrPaid = 0, developerBalance = 0, scHolding = 0, holdingMos = 0;
+  let remainingConstr = 0, handoverBalance = 0, phpBalance = 0, phpRemainingAtExit = 0;
 
   if (preHandover) {
-    constrPaid = toHandoverMos > 0 ? P * (paidPct/100) * horizMos / Math.round(toHandoverMos) : 0;
-    developerBalance = P - constrPaid;
+    constrPaid      = toHandoverMos > 0 ? P * (paidPct/100) * horizMos / Math.round(toHandoverMos) : 0;
+    remainingConstr = P * paidPct/100 - constrPaid;
+    handoverBalance = P * handoverPct/100;
+    phpBalance      = phpOn ? P * phpPct/100 : 0;
+    developerBalance = remainingConstr + handoverBalance + phpBalance; // = P - constrPaid
     invested  = constrPaid + dealFees;
     proceeds  = salePrice - developerBalance;
     profit    = proceeds - invested - exitCosts;
@@ -874,7 +926,12 @@ function calcFlipResult(base) {
   } else {
     holdingMos = isOff ? Math.max(0, horizMos - Math.round(toHandoverMos)) : horizMos;
     scHolding  = scMonthly * holdingMos;
-    invested   = (isOff ? entry : entry) + renovation;
+    // PHP remaining at exit (informational — economic profit = salePrice − exitCosts − entry − renovation − scHolding)
+    if (phpOn && phpMonthsVal > 0 && isOff) {
+      const elapsedPhp = Math.min(holdingMos, phpMonthsVal);
+      phpRemainingAtExit = Math.max(0, P * phpPct/100 * (phpMonthsVal - elapsedPhp) / phpMonthsVal);
+    }
+    invested   = entry + renovation;
     proceeds   = salePrice - exitCosts;
     profit     = proceeds - invested - scHolding;
   }
@@ -891,6 +948,7 @@ function calcFlipResult(base) {
     ? (Math.pow(salePrice_BE / P, 1/horizYrs) - 1) * 100 : 0;
 
   // ── IRR ──
+  const phpDevMonthly = phpOn && phpMonthsVal > 0 ? P * phpPct/100 / phpMonthsVal : 0;
   let irrAnnual = null;
   try {
     if (preHandover) {
@@ -902,7 +960,8 @@ function calcFlipResult(base) {
       irrAnnual = computeOffplanIRRNew(
         Math.max(1, Math.round(toHandoverMos)), horizMos,
         paidPct, handoverPct, dealFees, furn + renovation, P,
-        -scMonthly * 12, salePrice - exitCosts
+        -scMonthly * 12, salePrice - exitCosts,
+        phpDevMonthly, phpMonthsVal
       );
     } else {
       irrAnnual = computeReadyFlipIRR(horizMos, entry + renovation, scMonthly, salePrice, exitCosts);
@@ -916,6 +975,7 @@ function calcFlipResult(base) {
   const flip = {
     preHandover, salePrice, exitCosts, exitCostsPct, proceeds,
     invested, developerBalance, constrPaid, dealFees,
+    remainingConstr, handoverBalance, phpBalance, phpRemainingAtExit, phpOn, phpPct, phpMonthsVal,
     profit, roi, cagr, irrAnnual, breakEvenGrowth,
     scHolding, holdingMos, renovation, impliedGrowth, horizMos,
     toHandoverMos: Math.round(toHandoverMos),
@@ -953,7 +1013,7 @@ function solveIRR(flows) {
   return (lo+hi)/2;
 }
 
-function computeOffplanIRRNew(toHandoverMos, horizonMos, paidPct, handoverPct, dealFees, furnPaid, P, noi, salePrice) {
+function computeOffplanIRRNew(toHandoverMos, horizonMos, paidPct, handoverPct, dealFees, furnPaid, P, noi, salePrice, phpDevMonthly=0, phpPeriodMos=0) {
   if (horizonMos < 1) return null;
   const flows = new Array(horizonMos + 1).fill(0);
   flows[1] -= dealFees;
@@ -964,7 +1024,11 @@ function computeOffplanIRRNew(toHandoverMos, horizonMos, paidPct, handoverPct, d
     flows[toHandoverMos] -= P * (handoverPct / 100);
     if (furnPaid > 0) flows[toHandoverMos] -= furnPaid;
     const noiMonthly = noi / 12;
-    for (let m = toHandoverMos + 1; m <= horizonMos; m++) flows[m] += noiMonthly;
+    for (let m = toHandoverMos + 1; m <= horizonMos; m++) {
+      const elapsed = m - toHandoverMos;
+      const phpPay = (phpPeriodMos > 0 && elapsed <= phpPeriodMos) ? phpDevMonthly : 0;
+      flows[m] += noiMonthly - phpPay;
+    }
   }
   flows[horizonMos] += salePrice;
   const monthlyRate = solveIRR(flows);
@@ -1000,13 +1064,21 @@ function calc() {
 
   const exitCostsPct  = Math.max(0, num('exitCostsPct'));
 
+  // ── PHP (Post-Handover Plan) ──
+  const phpEnabledEl  = document.getElementById('phpEnabled');
+  const phpEnabledChk = isOff && (phpEnabledEl?.checked || false);
+  const phpPctRaw     = isOff ? (100 - num('paidPct') - num('handoverPct')) : 0;
+  const phpOn         = phpEnabledChk && phpPctRaw > 0;
+  const phpPct        = phpOn ? phpPctRaw : 0;
+  const phpMonthsVal  = phpOn ? Math.max(1, num('phpMonths')) : 0;
+
   // ── Flip mode ──
   if (M.strategy === 'flip') {
     const horizYrs = getHorizonYrs();
     return calcFlipResult({ P, isOff, isMort, entry, dealCosts, furn,
       dld, commission, vat, trustee, oqood, vatEnabled,
       down, loan, mortgageReg, bankFee, valuation, monthlyPayment, debtService,
-      horizYrs, exitCostsPct });
+      horizYrs, exitCostsPct, phpOn, phpPct, phpMonthsVal });
   }
   const rentIndexPct  = !isShort ? Math.max(0, num('rentIndexPct')) : 0;
   const vacancyMonths = !isShort ? Math.max(0, Math.min(11.9, num('vacancyMonths'))) : 0;
@@ -1045,7 +1117,7 @@ function calc() {
     const handoverPct   = num('handoverPct');
     const growthPre     = num('growthPre');
     const growthPost    = num('growthPost');
-    const planError     = Math.abs(paidPct + handoverPct - 100) > 0.001;
+    const planError     = phpEnabledChk ? phpPctRaw < -0.001 : Math.abs(paidPct + handoverPct - 100) > 0.001;
 
     const toHandoverYrs    = handoverMos / 12;
     const toHandoverMosInt = Math.max(1, Math.round(handoverMos));
@@ -1082,8 +1154,11 @@ function calc() {
     const totalROI      = invested > 0 ? totalProfit / invested * 100 : 0;
     const annualizedROI = horizonYears > 0
       ? (Math.pow(1 + Math.max(totalROI, -99)/100, 1/horizonYears) - 1) * 100 : 0;
+    const devPayMonthly = phpOn ? P * phpPct/100 / phpMonthsVal : 0;
+    const phpCoverage   = devPayMonthly > 0 && noi > 0 ? noi/12 / devPayMonthly * 100 : 0;
     const irrAnnual = computeOffplanIRRNew(
-      toHandoverMosInt, horizonMos, paidPct, handoverPct, dealFees, furnPaid, P, noi, netSalePrice
+      toHandoverMosInt, horizonMos, paidPct, handoverPct, dealFees, furnPaid, P, noi, netSalePrice,
+      devPayMonthly, phpMonthsVal
     );
 
     value5       = netSalePrice;
@@ -1099,6 +1174,7 @@ function calc() {
       valueAtHandover, salePrice, netSalePrice, exitCosts, exitCostsPct, rentalYears, rentalIncome, rentIndexPct, vacancyMonths,
       dealFees, constructionPaid, handoverPaid, invested,
       capitalGain, totalProfit, totalROI, annualizedROI, irrAnnual,
+      phpOn, phpPct, phpPctRaw, phpMonths: phpMonthsVal, devPayMonthly, phpCoverage,
     };
   } else {
     const growth    = num('growth');
@@ -1148,12 +1224,18 @@ function calcCommercial() {
 
   // ── Flip mode ──
   if (M.strategy === 'flip') {
-    const horizYrs = getHorizonYrs();
+    const horizYrs     = getHorizonYrs();
     const exitCostsPct = Math.max(0, num('exitCostsPct'));
+    const phpEnabledComEl = document.getElementById('phpEnabled');
+    const phpEnabledCom   = isOff && (phpEnabledComEl?.checked || false);
+    const phpPctRawCom    = isOff ? (100 - num('paidPct') - num('handoverPct')) : 0;
+    const phpOnCom        = phpEnabledCom && phpPctRawCom > 0;
+    const phpPctCom       = phpOnCom ? phpPctRawCom : 0;
+    const phpMonthsComVal = phpOnCom ? Math.max(1, num('phpMonths')) : 0;
     return calcFlipResult({ P, isOff, isMort: false, entry, dealCosts, furn: fitoutInEntry,
       dld, commission, vat: vatOnComm + commDealVat, trustee, oqood, vatEnabled: false,
       down: 0, loan: 0, mortgageReg: 0, bankFee: 0, valuation: 0, monthlyPayment: 0, debtService: 0,
-      horizYrs, exitCostsPct });
+      horizYrs, exitCostsPct, phpOn: phpOnCom, phpPct: phpPctCom, phpMonthsVal: phpMonthsComVal });
   }
 
   // Rent
@@ -1215,7 +1297,10 @@ function calcCommercial() {
     const handoverPct    = num('handoverPct');
     const growthPre      = num('growthPre');
     const growthPost     = num('growthPost');
-    const planError      = Math.abs(paidPct + handoverPct - 100) > 0.001;
+    const phpComEl2      = document.getElementById('phpEnabled');
+    const phpComEnabled2 = isOff && (phpComEl2?.checked || false);
+    const phpPctRawCom2  = 100 - paidPct - handoverPct;
+    const planError      = phpComEnabled2 ? phpPctRawCom2 < -0.001 : Math.abs(paidPct + handoverPct - 100) > 0.001;
     const toHandoverYrs  = handoverMos / 12;
     const toHandoverMosInt = Math.max(1, Math.round(handoverMos));
     const horizonMos     = Math.max(1, Math.round(horizYrs * 12));
@@ -1345,10 +1430,14 @@ function recalc() {
     }
 
     html2 += row(EN?'Sale price':'Цена продажи', fmt(f.salePrice)+' AED')
-    + (f.preHandover ? row(EN?'Developer balance (remaining obligation)':'Остаток обязательства перед застройщиком', '−'+fmt(f.developerBalance)+' AED', {indent:1, color:'var(--red)'}) : '')
+    + (f.preHandover ? row(EN?'Developer balance (obligation transferred to buyer)':'Остаток обязательства перед застройщиком (передаётся покупателю)', '−'+fmt(f.developerBalance)+' AED', {indent:1, color:'var(--red)'}) : '')
+    + (f.preHandover && f.remainingConstr > 0 ? row(EN?'    Remaining construction installments':'    Остаток строительных взносов', fmt(f.remainingConstr)+' AED', {indent:1}) : '')
+    + (f.preHandover ? row(EN?`    Handover payment (${fmt(num('handoverPct'),0)}%)`:`    Платёж на handover (${fmt(num('handoverPct'),0)}%)`, fmt(f.handoverBalance)+' AED', {indent:1}) : '')
+    + (f.preHandover && f.phpOn && f.phpBalance > 0 ? row(EN?`    PHP instalments (${fmt(f.phpPct,1)}%)`:`    PHP-рассрочка (${fmt(f.phpPct,1)}%)`, fmt(f.phpBalance)+' AED', {indent:1, color:'var(--brass)'}) : '')
     + (f.preHandover ? row(EN?'Proceeds (received)':'Получено на руки', fmt(f.proceeds)+' AED', {bold:1}) : '')
     + row(EN?`Exit costs (${fmt(f.exitCostsPct,1)}%)`:`Расходы на выход (${fmt(f.exitCostsPct,1)}%)`, '−'+fmt(f.exitCosts)+' AED', {indent:1, color:'var(--red)'})
     + (!f.preHandover && f.scHolding > 0 ? row(EN?`Service charge (${f.holdingMos} mo holding)`:`Service charge (${f.holdingMos} ${declMonths(f.holdingMos)} владения)`, '−'+fmt(f.scHolding)+' AED', {indent:1, color:'var(--red)'}) : '')
+    + (!f.preHandover && f.phpOn && f.phpRemainingAtExit > 0 ? row(EN?`PHP balance remaining at exit (${f.phpMonthsVal - Math.min(f.holdingMos, f.phpMonthsVal)} mo left)`:`Остаток PHP-рассрочки на момент выхода (${f.phpMonthsVal - Math.min(f.holdingMos, f.phpMonthsVal)} мес.)`, fmt(f.phpRemainingAtExit)+' AED', {color:'var(--sub)'}) : '')
     + row(EN?'Profit':'Прибыль', (f.profit>=0?'+':'')+fmt(f.profit)+' AED', {bold:1, color: f.profit>=0?'var(--green)':'var(--red)'})
     + row('ROI', fmt(f.roi,1)+'%', {bold:1, color:flipColor})
     + row(EN?'CAGR (annualized)':'Годовых (CAGR)', fmt(f.cagr,2)+'%')
@@ -1497,12 +1586,12 @@ function recalc() {
     const o = r.offplan;
 
     if (o.planError) {
+      const errMsg = o.phpOn
+        ? (EN ? `Pre+On handover exceed 100% — no room for PHP` : `«До» + «На handover» превышают 100% — нет места для PHP`)
+        : (EN ? `Pre-handover (${fmt(o.paidPct,1)}%) + On handover (${fmt(o.handoverPct,1)}%) must total 100%, currently ${fmt(o.paidPct+o.handoverPct,1)}%.`
+              : `Сумма «До handover» (${fmt(o.paidPct,1)}%) + «На handover» (${fmt(o.handoverPct,1)}%) должна быть 100%, сейчас ${fmt(o.paidPct+o.handoverPct,1)}%.`);
       html += `<div class="section" style="border-color:var(--red)"><div class="sec-title" style="color:var(--red)">⚠ ${EN ? 'Payment Plan Error' : 'Ошибка плана платежей'}</div>`
-        + `<div style="font-size:13px;color:var(--red)">`
-        + (EN ? `Pre-handover (${fmt(o.paidPct,1)}%) + On handover (${fmt(o.handoverPct,1)}%) must total 100%, currently ${fmt(o.paidPct+o.handoverPct,1)}%.`
-              : `Сумма «До handover» (${fmt(o.paidPct,1)}%) + «На handover» (${fmt(o.handoverPct,1)}%) должна быть 100%, сейчас ${fmt(o.paidPct+o.handoverPct,1)}%.`)
-        + (EN ? ' Check percentages in the Off-plan section.' : ' Проверьте проценты в разделе «Офф-план: план платежей».')
-        + `</div></div>`;
+        + `<div style="font-size:13px;color:var(--red)">${errMsg}</div></div>`;
     }
 
     const constructMos = Math.round(o.handoverMos);
@@ -1520,6 +1609,12 @@ function recalc() {
       fmt(o.constructionPaid)+' AED', {indent:1})
     + (!o.preHandoverExit ? row(EN ? `  Handover payment (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)` : `  Платёж на handover (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}) : '')
     + row(EN ? '  Deal fees (DLD, Oqood, commission)' : '  Сборы (DLD, Oqood, комиссия)', fmt(o.dealFees)+' AED', {indent:1})
+    + (o.phpOn && !o.preHandoverExit && o.devPayMonthly > 0
+        ? row(EN ? `PHP instalment (${fmt(o.phpPct,1)}%, ${o.phpMonths} mo)` : `PHP рассрочка (${fmt(o.phpPct,1)}%, ${o.phpMonths} мес.)`,
+              fmt(o.devPayMonthly)+' '+aed_mo, {indent:1, color:'var(--red)'})
+        + row(EN ? 'Rental covers PHP by' : 'Аренда покрывает рассрочку',
+              fmt(o.phpCoverage,1)+'%', {color: o.phpCoverage >= 100 ? 'var(--green)' : 'var(--brass)'})
+        : '')
     + row(EN ? 'Sale price at horizon end' : 'Цена продажи в конце горизонта', fmt(o.salePrice)+' AED')
     + (o.exitCosts > 0 ? row(EN ? `Exit costs (${fmt(o.exitCostsPct,1)}%)` : `Расходы на выход (${fmt(o.exitCostsPct,1)}%)`, '−'+fmt(o.exitCosts)+' AED', {indent:1, color:'var(--red)'}) : '')
     + (!o.preHandoverExit ? row(EN ? `Net rental income (${fmt(o.rentalYears,1)} yrs${o.rentIndexPct>0?', idx '+fmt(o.rentIndexPct,1)+'%/yr':''})` : `Чистый доход от аренды (${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)}${o.rentIndexPct>0?', инд. '+fmt(o.rentIndexPct,1)+'%/год':''})`, '+'+fmt(o.rentalIncome)+' AED') : '')
@@ -1741,12 +1836,11 @@ function buildReport() {
     const o = r.offplan;
 
     if (o.planError) {
-      html += `<div class="rep-foot" style="color:var(--red);border-top:none;margin-top:8px">⚠ `
-        + (EN
-          ? `Pre-handover (${fmt(o.paidPct,1)}%) + On handover (${fmt(o.handoverPct,1)}%) must total 100% (currently ${fmt(o.paidPct+o.handoverPct,1)}%).`
-          : `Сумма «До handover» (${fmt(o.paidPct,1)}%) + «На handover» (${fmt(o.handoverPct,1)}%) должна быть 100% (сейчас ${fmt(o.paidPct+o.handoverPct,1)}%).`)
-        + (EN ? ' Check percentages before using this report.' : ' Проверьте проценты перед использованием отчёта.')
-        + `</div>`;
+      const repErrMsg = o.phpOn
+        ? (EN ? `Pre+On handover exceed 100% — no room for PHP.` : `«До» + «На handover» превышают 100% — нет места для PHP.`)
+        : (EN ? `Pre-handover (${fmt(o.paidPct,1)}%) + On handover (${fmt(o.handoverPct,1)}%) must total 100% (currently ${fmt(o.paidPct+o.handoverPct,1)}%).`
+              : `Сумма «До handover» (${fmt(o.paidPct,1)}%) + «На handover» (${fmt(o.handoverPct,1)}%) должна быть 100% (сейчас ${fmt(o.paidPct+o.handoverPct,1)}%).`);
+      html += `<div class="rep-foot" style="color:var(--red);border-top:none;margin-top:8px">⚠ ${repErrMsg} ${EN ? 'Check percentages before using this report.' : 'Проверьте проценты перед использованием отчёта.'}</div>`;
     }
 
     const constructMos = Math.round(o.handoverMos);
@@ -1764,6 +1858,12 @@ function buildReport() {
       fmt(o.constructionPaid)+' AED', {indent:1})
     + (!o.preHandoverExit ? row(EN ? `Handover payment (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)` : `Платёж на handover (${fmt(o.handoverPct, o.handoverPct%1===0?0:1)}%)`, fmt(o.handoverPaid)+' AED', {indent:1}) : '')
     + row(EN ? 'Deal fees (DLD, Oqood, commission)' : 'Сборы (DLD, Oqood, комиссия)', fmt(o.dealFees)+' AED', {indent:1})
+    + (o.phpOn && !o.preHandoverExit && o.devPayMonthly > 0
+        ? row(EN ? `PHP instalment (${fmt(o.phpPct,1)}%, ${o.phpMonths} mo)` : `PHP рассрочка (${fmt(o.phpPct,1)}%, ${o.phpMonths} мес.)`,
+              fmt(o.devPayMonthly)+' '+aed_mo, {indent:1, color:'var(--red)'})
+        + row(EN ? 'Rental covers PHP by' : 'Аренда покрывает рассрочку',
+              fmt(o.phpCoverage,1)+'%', {color: o.phpCoverage >= 100 ? 'var(--green)' : 'var(--brass)'})
+        : '')
     + row(EN ? 'Sale price at horizon end' : 'Цена продажи в конце горизонта', fmt(o.salePrice)+' AED')
     + (o.exitCosts > 0 ? row(EN ? `Exit costs (${fmt(o.exitCostsPct,1)}%)` : `Расходы на выход (${fmt(o.exitCostsPct,1)}%)`, '−'+fmt(o.exitCosts)+' AED', {indent:1, color:'var(--red)'}) : '')
     + (!o.preHandoverExit ? row(EN ? `Net rental income (${fmt(o.rentalYears,1)} yrs${o.rentIndexPct>0?', idx '+fmt(o.rentIndexPct,1)+'%/yr':''})` : `Чистый доход от аренды (${fmt(o.rentalYears,1)} ${declYears(o.rentalYears)}${o.rentIndexPct>0?', инд. '+fmt(o.rentIndexPct,1)+'%/год':''})`, '+'+fmt(o.rentalIncome)+' AED') : '')
@@ -1921,11 +2021,12 @@ function collectSnapshot() {
   ['price','area','dldPct','commPct','furnishing','rent','adr','occShort',
    'operatorPct','utilities','scRate','maintenance','mgmtPct','growth',
    'downPct','ratePct','termYears','horizonYears','exitCostsPct','handoverMonths','paidPct','handoverPct',
-   'growthPre','growthPost','rentIndexPct','vacancyMonths','flipRenovation','customExitPrice'].forEach(id => {
+   'growthPre','growthPost','rentIndexPct','vacancyMonths','flipRenovation','customExitPrice','phpMonths'].forEach(id => {
     const el = document.getElementById(id);
     if (el) inputs[id] = el.value;
   });
-  inputs.vatEnabled = document.getElementById('vatEnabled').checked;
+  inputs.vatEnabled  = document.getElementById('vatEnabled').checked;
+  inputs.phpEnabled  = document.getElementById('phpEnabled')?.checked || false;
   inputs.horizonUnit = M.horizonUnit;
   return {
     id: Date.now(),
@@ -1970,13 +2071,15 @@ function loadHistoryEntry(id) {
   ['price','area','dldPct','commPct','furnishing','rent','adr','occShort',
    'operatorPct','utilities','scRate','maintenance','mgmtPct','growth',
    'downPct','ratePct','termYears','horizonYears','exitCostsPct','handoverMonths','paidPct','handoverPct',
-   'growthPre','growthPost','rentIndexPct','vacancyMonths','flipRenovation','customExitPrice'].forEach(id => {
+   'growthPre','growthPost','rentIndexPct','vacancyMonths','flipRenovation','customExitPrice','phpMonths'].forEach(id => {
     const el = document.getElementById(id);
     if (el && inp[id] !== undefined) el.value = inp[id];
   });
   if (inp.horizonUnit) { M.horizonUnit = inp.horizonUnit; updateHorizonHint(); }
   document.getElementById('projectName').value = snap.name || '';
   if (inp.vatEnabled !== undefined) document.getElementById('vatEnabled').checked = inp.vatEnabled;
+  const phpEl = document.getElementById('phpEnabled');
+  if (phpEl && inp.phpEnabled !== undefined) phpEl.checked = inp.phpEnabled;
   closeHistory();
   syncVisibility();
   recalc();
