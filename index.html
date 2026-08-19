@@ -132,6 +132,15 @@
   .hist-empty { text-align:center; padding:60px 20px; color:var(--sub); }
   .hist-empty-icon { font-size:40px; margin-bottom:12px; }
   input[type="text"].plain { width:100%; border:1px solid var(--line); border-radius:8px; background:#FBFBFA; padding:10px 12px; font-size:16px; font-family:inherit; color:var(--ink); outline:none; }
+  /* Tier toggle */
+  .tier-wrap { display:flex; flex-direction:column; align-items:flex-start; gap:3px; }
+  .tier-toggle { display:flex; background:#E8EAE6; border-radius:9px; padding:3px; }
+  .tier-btn { padding:6px 18px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:800; background:transparent; color:var(--sub); transition:all .15s; }
+  .tier-btn.on { background:var(--green); color:#F2F5F2; }
+  .tier-info-btn { border:none; background:none; font-size:11.5px; color:var(--sub); cursor:pointer; text-decoration:underline; text-underline-offset:2px; padding:0; font-family:inherit; white-space:nowrap; }
+  .tier-info-btn:hover { color:var(--ink); }
+  /* Pro info overlay list */
+  #proInfoList ul { margin:8px 0 0; padding-left:18px; line-height:1.75; font-size:14px; }
 </style>
 </head>
 <body>
@@ -142,6 +151,13 @@
       <h1 data-i18n="h1">Калькулятор ROI</h1>
     </div>
     <div class="header-right">
+      <div class="tier-wrap">
+        <div class="tier-toggle">
+          <button class="tier-btn on" data-tier="quick" onclick="setTier('quick')">Quick</button>
+          <button class="tier-btn" data-tier="pro" onclick="setTier('pro')">Pro</button>
+        </div>
+        <button class="tier-info-btn" onclick="showProInfo()" data-i18n="lbl_whats_pro">Что входит в Pro?</button>
+      </div>
       <div class="lang-toggle">
         <button id="btn-ru" class="on" onclick="setLang('ru')">RU</button>
         <button id="btn-en" onclick="setLang('en')">EN</button>
@@ -154,7 +170,7 @@
   <div class="grid2">
     <!-- ВВОД -->
     <div>
-      <div class="section">
+      <div class="section" id="sec-scenario">
         <div class="sec-title" data-i18n="sec_scenario">Сценарий</div>
         <div class="toggle" id="tg-type">
           <button data-v="residential" class="on" data-i18n="mode_residential" onclick="setMode('type','residential')">Жилая</button>
@@ -183,7 +199,7 @@
         </div>
       </div>
 
-      <div class="section">
+      <div class="section" id="sec-property">
         <div class="sec-title" data-i18n="sec_property">Объект</div>
         <div class="field">
           <div class="f-label" data-i18n="lbl_name">Название (для отчёта)</div>
@@ -235,6 +251,46 @@
           <div class="f-box"><input id="exitCostsPct" inputmode="decimal" value="2.1" oninput="recalc()"><span class="suffix">%</span></div>
           <div class="f-hint" data-i18n="hint_exitCosts">комиссия агента при продаже</div>
         </div>
+      </div>
+
+      <!-- ── Quick mode section ───────────────────────────── -->
+      <div class="section hidden" id="sec-quick">
+        <div class="sec-title" data-i18n="sec_quick_property">Объект и аренда</div>
+        <div class="field">
+          <div class="f-label" data-i18n="lbl_price">Цена объекта</div>
+          <div class="f-box"><input id="q-price" inputmode="decimal" value="1500000" oninput="syncFromQuickInput('q-price');recalc()"><span class="suffix">AED</span></div>
+        </div>
+        <div class="cols2">
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_dld">DLD сбор</div>
+            <div class="f-box"><input id="q-dldPct" inputmode="decimal" value="4" oninput="syncFromQuickInput('q-dldPct');recalc()"><span class="suffix">%</span></div>
+          </div>
+          <div class="field">
+            <div class="f-label" data-i18n="lbl_comm">Комиссия агента</div>
+            <div class="f-box"><input id="q-commPct" inputmode="decimal" value="2" oninput="syncFromQuickInput('q-commPct');recalc()"><span class="suffix">%</span></div>
+            <label class="checkbox-row vat-check">
+              <input type="checkbox" id="q-vatEnabled" checked onchange="syncFromQuickInput('q-vatEnabled');recalc()">
+              <span data-i18n="lbl_vat_check">VAT 5%</span>
+            </label>
+          </div>
+        </div>
+        <div class="field">
+          <div class="f-label" data-i18n="lbl_rent">Годовая аренда</div>
+          <div class="f-box"><input id="q-rent" inputmode="decimal" value="110000" oninput="syncFromQuickInput('q-rent');recalc()"><span class="suffix">AED</span></div>
+        </div>
+        <details class="adv-details" id="adv-quick">
+          <summary data-i18n="lbl_quick_expenses">Расходы</summary>
+          <div class="cols2" style="margin-top:10px">
+            <div class="field">
+              <div class="f-label" data-i18n="lbl_area">Площадь</div>
+              <div class="f-box"><input id="q-area" inputmode="decimal" value="800" oninput="syncFromQuickInput('q-area');recalc()"><span class="suffix">sqft</span></div>
+            </div>
+            <div class="field">
+              <div class="f-label" data-i18n="lbl_sc">Service charge</div>
+              <div class="f-box"><input id="q-scRate" inputmode="decimal" value="18" oninput="syncFromQuickInput('q-scRate');recalc()"><span class="suffix">AED/sqft</span></div>
+            </div>
+          </div>
+        </details>
       </div>
 
       <div class="section hidden" id="sec-offplan">
@@ -439,7 +495,7 @@
         </div>
       </div>
 
-      <div class="section">
+      <div class="section" id="sec-opex">
         <div class="sec-title" id="sec-opex-title">Ежегодные расходы и прогноз</div>
         <div class="cols2">
           <div class="field">
@@ -558,6 +614,20 @@ const TR = {
     lbl_comm_vat_deal:'VAT 5% на сделку', comm_deal_ontop:'Начисляется сверху', comm_deal_included:'Включён в цену',
     comm_rent_ex_vat:'Аренда без VAT (доход собственника)', comm_vat_transit:'VAT транзитом → FTA',
     comm_deal_vat_cost:'VAT на сделку (доп. расход)',
+    // Quick/Pro
+    sec_quick_property:'Объект и аренда',
+    lbl_quick_expenses:'Расходы',
+    lbl_whats_pro:'Что входит в Pro?',
+    pro_info_title:'Что входит в Pro?',
+    pro_info_items:[
+      'Офф-план с post-handover рассрочкой (PHP) и расчётом IRR',
+      'Flip-режим — переуступка и перепродажа',
+      'Ипотечное финансирование',
+      'Краткосрочная аренда (Airbnb/Booking)',
+      'Коммерческая недвижимость (офис, ритейл, склад)',
+      'Полный PDF-отчёт со всеми метриками',
+      'История и сравнение сценариев (до 30 сохранений)',
+    ],
   },
   en: {
     eyebrow:'Dubai Real Estate', h1:'ROI Calculator', btn_report:'Generate Report →',
@@ -614,6 +684,20 @@ const TR = {
     lbl_comm_vat_deal:'VAT 5% on deal', comm_deal_ontop:'On top of price', comm_deal_included:'Included in price',
     comm_rent_ex_vat:'Rent ex-VAT (owner income)', comm_vat_transit:'VAT transit → FTA',
     comm_deal_vat_cost:'VAT on purchase (add. cost)',
+    // Quick/Pro
+    sec_quick_property:'Property & Rental',
+    lbl_quick_expenses:'Expenses',
+    lbl_whats_pro:"What's in Pro?",
+    pro_info_title:"What's in Pro?",
+    pro_info_items:[
+      'Off-plan with post-handover plan (PHP) and IRR calculation',
+      'Flip mode — assignment & post-HO resale',
+      'Mortgage financing',
+      'Short-term rental (Airbnb / Booking)',
+      'Commercial property (office, retail, warehouse)',
+      'Full multi-page PDF report with all metrics',
+      'History & scenario comparison (up to 30 saves)',
+    ],
   }
 };
 
@@ -646,7 +730,9 @@ function setLang(lang) { applyLang(lang); }
 // ─── State ───────────────────────────────────────────────────────────────────
 const M = { type:'residential', prop:'ready', fin:'cash', rent:'long',
   comm:'office', commVatDeal:'ontop', commRentMode:'sqft', commRentVat:'ontop', commFitoutWho:'tenant',
-  strategy:'rent', horizonUnit:'yrs', exitPriceMode:'growth' };
+  strategy:'rent', horizonUnit:'yrs', exitPriceMode:'growth',
+  tier: localStorage.getItem('tier') || 'quick',
+  _proState: null };
 
 const num = id => {
   const el = document.getElementById(id);
@@ -685,7 +771,83 @@ function setMode(key, val) {
   recalc();
 }
 
+// ─── Tier (Quick / Pro) ──────────────────────────────────────────────────────
+const QUICK_SYNC = {
+  'q-price':'price', 'q-dldPct':'dldPct', 'q-commPct':'commPct',
+  'q-rent':'rent', 'q-area':'area', 'q-scRate':'scRate', 'q-vatEnabled':'vatEnabled'
+};
+
+function syncFromQuickInput(qId) {
+  const mainId = QUICK_SYNC[qId];
+  if (!mainId) return;
+  const qEl = document.getElementById(qId);
+  const mEl = document.getElementById(mainId);
+  if (!qEl || !mEl) return;
+  if (qEl.type === 'checkbox') mEl.checked = qEl.checked;
+  else mEl.value = qEl.value;
+}
+
+function syncMainToQuick() {
+  Object.entries(QUICK_SYNC).forEach(([qId, mainId]) => {
+    const qEl = document.getElementById(qId);
+    const mEl = document.getElementById(mainId);
+    if (!qEl || !mEl) return;
+    if (qEl.type === 'checkbox') qEl.checked = mEl.checked;
+    else qEl.value = mEl.value;
+  });
+}
+
+function syncQuickToMain() {
+  Object.entries(QUICK_SYNC).forEach(([qId, mainId]) => {
+    const qEl = document.getElementById(qId);
+    const mEl = document.getElementById(mainId);
+    if (!qEl || !mEl) return;
+    if (qEl.type === 'checkbox') mEl.checked = qEl.checked;
+    else mEl.value = qEl.value;
+  });
+}
+
+function setTier(tier) {
+  const prev = M.tier;
+  M.tier = tier;
+  localStorage.setItem('tier', tier);
+  document.querySelectorAll('.tier-btn').forEach(b =>
+    b.classList.toggle('on', b.dataset.tier === tier));
+
+  if (tier === 'quick') {
+    M._proState = { type:M.type, prop:M.prop, fin:M.fin, rent:M.rent, strategy:M.strategy, comm:M.comm };
+    M.type = 'residential'; M.prop = 'ready'; M.fin = 'cash'; M.rent = 'long'; M.strategy = 'rent';
+    syncMainToQuick();
+  } else {
+    if (prev === 'quick') {
+      syncQuickToMain();
+      if (M._proState) {
+        Object.assign(M, M._proState);
+        M._proState = null;
+      }
+      ['type','prop','fin','rent','strategy','comm'].forEach(key => {
+        const tg = document.getElementById('tg-'+key);
+        if (tg) tg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === M[key]));
+      });
+    }
+  }
+  syncVisibility();
+  recalc();
+}
+
 function syncVisibility() {
+  const isQuick = M.tier === 'quick';
+  document.getElementById('sec-quick').classList.toggle('hidden', !isQuick);
+  document.getElementById('sec-scenario').classList.toggle('hidden', isQuick);
+  document.getElementById('sec-property').classList.toggle('hidden', isQuick);
+  document.getElementById('sec-opex').classList.toggle('hidden', isQuick);
+  if (isQuick) {
+    ['sec-offplan','sec-mortgage','sec-long','sec-short','sec-flip','sec-comm-rent','sec-comm-fitout'].forEach(id => {
+      document.getElementById(id)?.classList.add('hidden');
+    });
+    return;
+  }
+
   const isCom   = M.type === 'commercial';
   const isOff   = M.prop === 'offplan';
   const isMort  = M.fin === 'mortgage' && !isOff && !isCom;
@@ -1351,8 +1513,96 @@ function calcCommercial() {
 const row = (l,v,opts={}) =>
   `<div class="row ${opts.bold?'bold':''} ${opts.indent?'indent':''}"><span class="l">${l}</span><span class="v" style="color:${opts.color||'var(--ink)'}">${v}</span></div>`;
 
+// ─── Quick mode calc & render ─────────────────────────────────────────────────
+function recalcQuick() {
+  sanitizeInputs();
+  const r = calc();
+  const EN = LANG === 'en';
+  const yColor = r.netYield>=6 ? 'var(--green)' : r.netYield>=4.5 ? 'var(--brass)' : 'var(--red)';
+  const heroColor = r.netYield<4.5 ? '#E8B59F' : '#E9D9A8';
+  const aed_mo = EN ? 'AED/mo' : 'AED/мес';
+  const payback = r.noi > 0 ? r.entry / r.noi : Infinity;
+  const commLabel = r.vatEnabled
+    ? (EN ? `Commission ${num('commPct')}% + VAT 5%` : `Комиссия ${num('commPct')}% + VAT 5%`)
+    : (EN ? `Commission ${num('commPct')}%` : `Комиссия ${num('commPct')}%`);
+
+  let html = `
+  <div class="hero">
+    <div class="kl">${EN ? 'Net Yield' : 'Чистая доходность'}</div>
+    <div class="kl">${EN ? 'Gross Yield' : 'Валовая доходность'}</div>
+    <div class="kv" style="color:${heroColor}">${fmt(r.netYield,2)}%</div>
+    <div class="kv">${fmt(r.grossYield,2)}%</div>
+    <div class="kd">${EN ? 'NOI / total entry cost' : 'NOI / вход в сделку'}</div>
+    <div class="kd">${EN ? 'rent / price' : 'аренда / цена'}</div>
+  </div>
+  <div class="section"><div class="sec-title">${EN ? 'Entry Cost' : 'Стоимость входа'}</div>
+  ${row(EN?'Property price':'Цена объекта', fmt(r.P)+' AED')}
+  ${row(`DLD ${num('dldPct')}% + 580 AED`, fmt(r.dld)+' AED', {indent:1})}
+  ${row(commLabel, fmt(r.commission+r.vat)+' AED', {indent:1})}
+  ${row('Trustee office', fmt(r.trustee)+' AED', {indent:1})}
+  ${row(EN?'Total entry cost':'Итого вход', fmt(r.entry)+' AED', {bold:1})}
+  </div>
+  <div class="section"><div class="sec-title">${EN ? 'Annual Result' : 'Годовой результат'}</div>
+  ${row(EN?'Annual rent':'Годовая аренда', fmt(r.grossRevenue)+' AED')}
+  ${row(EN?'Service charge':'Service charge', '−'+fmt(r.serviceCharge)+' AED', {indent:1, color:'var(--red)'})}
+  ${row(EN?'Repairs / reserve':'Ремонт / резерв', '−'+fmt(r.maint)+' AED', {indent:1, color:'var(--red)'})}
+  ${row(EN?'Net operating income (NOI)':'Чистый доход (NOI)', fmt(r.noi)+' AED/'+t('year_unit'), {bold:1, color:yColor})}
+  ${row(EN?'Per month':'В месяц', fmt(r.noi/12)+' '+aed_mo)}
+  ${isFinite(payback) ? row(EN?'Payback period':'Окупаемость', fmt(payback,1)+' '+(EN?'yrs':'лет')) : ''}
+  </div>
+  <button class="btn gray" style="width:100%;margin-bottom:8px" onclick="saveToHistory(this)">${t('btn_save')}</button>`;
+  document.getElementById('results').innerHTML = html;
+}
+
+function buildReportQuick() {
+  const r = calc();
+  const EN = LANG === 'en';
+  const name = document.getElementById('projectName').value || (EN ? 'Property' : 'Объект');
+  const today = new Date().toLocaleDateString(EN ? 'en-GB' : 'ru-RU');
+  const payback = r.noi > 0 ? r.entry / r.noi : Infinity;
+  const scenario = (EN ? 'Ready · Cash · Long-term rental · ' : 'Готовый · Наличные · Долгосрок · ') + fmt(num('area')) + ' sqft';
+  const commLabel = r.vatEnabled
+    ? (EN ? 'Commission + VAT 5%' : 'Комиссия + VAT 5%')
+    : (EN ? 'Commission' : 'Комиссия');
+
+  const html = `
+  <div class="rep-head">
+    <div class="eyebrow">Quick Analysis · Dubai · ${today}</div>
+    <h2>${name}</h2>
+    <div style="font-size:13px;color:var(--sub)">${scenario}</div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="l">${EN?'Net Yield':'Чистая доходность'}</div><div class="v">${fmt(r.netYield,2)}%</div></div>
+    <div class="kpi"><div class="l">${EN?'Gross Yield':'Валовая доходность'}</div><div class="v">${fmt(r.grossYield,2)}%</div></div>
+    <div class="kpi"><div class="l">${EN?'Payback':'Окупаемость'}</div><div class="v">${isFinite(payback)?fmt(payback,1)+(EN?' yr':' лет'):'—'}</div></div>
+  </div>
+  <div class="rep-section"><h3>${EN?'Entry Cost':'Вход в сделку'}</h3>
+  ${row(EN?'Property price':'Цена объекта', fmt(r.P)+' AED')}
+  ${row(EN?'DLD + registration':'DLD + регистрация', fmt(r.dld+r.trustee)+' AED', {indent:1})}
+  ${row(commLabel, fmt(r.commission+r.vat)+' AED', {indent:1})}
+  ${row(EN?'Total entry cost':'Полная стоимость входа', fmt(r.entry)+' AED', {bold:1})}
+  </div>
+  <div class="rep-section"><h3>${EN?'Annual Result':'Годовой результат'}</h3>
+  ${row(EN?'Annual rent':'Годовая аренда', fmt(r.grossRevenue)+' AED')}
+  ${row(EN?'Operating expenses':'Расходы', '−'+fmt(r.opex)+' AED', {indent:1, color:'var(--red)'})}
+  ${row(EN?'Net operating income (NOI)':'Чистый доход (NOI)', fmt(r.noi)+' AED/'+t('year_unit'), {bold:1, color:'var(--green)'})}
+  ${row(EN?'Per month':'В месяц', fmt(r.noi/12)+' '+(EN?'AED/mo':'AED/мес'))}
+  </div>
+  <div class="rep-section"><h3>${EN?'Returns':'Доходность'}</h3>
+  ${row(EN?'Net yield':'Чистая доходность', fmt(r.netYield,2)+'%', {bold:1, color:'var(--green)'})}
+  ${row(EN?'Gross yield':'Валовая доходность', fmt(r.grossYield,2)+'%')}
+  ${isFinite(payback)?row(EN?'Payback period':'Окупаемость', fmt(payback,1)+' '+(EN?'yrs':'лет')):''}
+  </div>
+  <div class="rep-foot">${EN
+    ?`Service charge ${num('q-scRate')||num('scRate')} AED/sqft · Repairs reserve ${fmt(r.maint)} AED/yr. Indicative only, not investment advice. · ${today}`
+    :`Service charge ${num('q-scRate')||num('scRate')} AED/sqft · Резерв на ремонт ${fmt(r.maint)} AED/год. Расчёт оценочный, не является инвестиционной рекомендацией. · ${today}`
+  }</div>`;
+  document.getElementById('report').innerHTML = html;
+}
+
 
 function recalc() {
+  if (M.tier === 'quick') { recalcQuick(); return; }
   sanitizeInputs();
   updatePlanCheck();
   // Update sqft rent calculated field
@@ -1642,6 +1892,7 @@ function recalc() {
 
 // ─── Report ──────────────────────────────────────────────────────────────────
 function buildReport() {
+  if (M.tier === 'quick') { buildReportQuick(); return; }
   const r     = calc();
   const EN    = LANG === 'en';
   const name  = document.getElementById('projectName').value || (EN ? 'Property' : 'Объект недвижимости');
@@ -2249,6 +2500,18 @@ const TIPS = {
   }
 };
 
+function showProInfo() {
+  const EN = LANG === 'en';
+  document.getElementById('proInfoTitle').textContent = t('pro_info_title');
+  const items = t('pro_info_items');
+  document.getElementById('proInfoList').innerHTML =
+    '<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
+  document.getElementById('proInfoOverlay').classList.remove('hidden');
+}
+function closeProInfo() {
+  document.getElementById('proInfoOverlay').classList.add('hidden');
+}
+
 function showTip(key, e) {
   if (e) e.stopPropagation();
   const tip = TIPS[key];
@@ -2262,6 +2525,14 @@ function closeTip() {
   document.getElementById('tipOverlay').classList.add('hidden');
 }
 
+// Initialize tier state on load
+document.querySelectorAll('.tier-btn').forEach(b =>
+  b.classList.toggle('on', b.dataset.tier === M.tier));
+if (M.tier === 'quick') {
+  M.type = 'residential'; M.prop = 'ready'; M.fin = 'cash'; M.rent = 'long'; M.strategy = 'rent';
+  syncMainToQuick();
+}
+
 applyLang(LANG);
 
 if ('serviceWorker' in navigator) {
@@ -2270,6 +2541,13 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+<div id="proInfoOverlay" class="tip-overlay hidden" onclick="closeProInfo()">
+  <div class="tip-card" style="max-width:380px" onclick="event.stopPropagation()">
+    <button class="tip-close" onclick="closeProInfo()">✕</button>
+    <div class="tip-term" id="proInfoTitle">Что входит в Pro?</div>
+    <div id="proInfoList" class="tip-body" style="margin-top:4px"></div>
+  </div>
+</div>
 <div id="tipOverlay" class="tip-overlay hidden" onclick="closeTip()">
   <div class="tip-card" onclick="event.stopPropagation()">
     <button class="tip-close" onclick="closeTip()">✕</button>
