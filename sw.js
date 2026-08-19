@@ -1,4 +1,4 @@
-const CACHE = 'roi-dubai-v29';
+const CACHE = 'roi-dubai-v30';
 
 // Static assets — pre-cached on install, served cache-first (icons, manifest don't change often)
 const STATIC = [
