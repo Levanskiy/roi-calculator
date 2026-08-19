@@ -140,7 +140,8 @@
   .tier-info-btn { position:absolute; top:calc(100% + 4px); left:0; border:none; background:none; font-size:11px; color:var(--sub); cursor:pointer; text-decoration:underline; text-underline-offset:2px; padding:0; font-family:inherit; white-space:nowrap; line-height:1; }
   .tier-info-btn:hover { color:var(--ink); }
   /* Header: flex-start aligns tops so absolute link doesn't push neighbours */
-  .header-right { display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap; }
+  /* row-gap:28px clears the absolute tier-info-btn that hangs below the toggle */
+  .header-right { display:flex; gap:28px 10px; align-items:flex-start; flex-wrap:wrap; }
   /* Pro info overlay list */
   #proInfoList ul { margin:8px 0 0; padding-left:18px; line-height:1.75; font-size:14px; }
 </style>
