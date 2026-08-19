@@ -133,12 +133,15 @@
   .hist-empty-icon { font-size:40px; margin-bottom:12px; }
   input[type="text"].plain { width:100%; border:1px solid var(--line); border-radius:8px; background:#FBFBFA; padding:10px 12px; font-size:16px; font-family:inherit; color:var(--ink); outline:none; }
   /* Tier toggle */
-  .tier-wrap { display:flex; flex-direction:column; align-items:flex-start; gap:3px; }
   .tier-toggle { display:flex; background:#E8EAE6; border-radius:9px; padding:3px; }
   .tier-btn { padding:6px 18px; border:none; border-radius:7px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:800; background:transparent; color:var(--sub); transition:all .15s; }
   .tier-btn.on { background:var(--green); color:#F2F5F2; }
-  .tier-info-btn { border:none; background:none; font-size:11.5px; color:var(--sub); cursor:pointer; text-decoration:underline; text-underline-offset:2px; padding:0; font-family:inherit; white-space:nowrap; }
+  .tier-info-btn { border:none; background:none; font-size:11.5px; color:var(--sub); cursor:pointer; text-decoration:underline; text-underline-offset:2px; padding:0; font-family:inherit; white-space:nowrap; line-height:1; }
   .tier-info-btn:hover { color:var(--ink); }
+  /* header rows on mobile */
+  .header-right { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .header-row1 { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .header-row2 { display:flex; gap:8px; align-items:center; }
   /* Pro info overlay list */
   #proInfoList ul { margin:8px 0 0; padding-left:18px; line-height:1.75; font-size:14px; }
 </style>
@@ -151,19 +154,21 @@
       <h1 data-i18n="h1">Калькулятор ROI</h1>
     </div>
     <div class="header-right">
-      <div class="tier-wrap">
+      <div class="header-row1">
         <div class="tier-toggle">
           <button class="tier-btn on" data-tier="quick" onclick="setTier('quick')">Quick</button>
           <button class="tier-btn" data-tier="pro" onclick="setTier('pro')">Pro</button>
         </div>
         <button class="tier-info-btn" onclick="showProInfo()" data-i18n="lbl_whats_pro">Что входит в Pro?</button>
+        <div class="lang-toggle">
+          <button id="btn-ru" class="on" onclick="setLang('ru')">RU</button>
+          <button id="btn-en" onclick="setLang('en')">EN</button>
+        </div>
       </div>
-      <div class="lang-toggle">
-        <button id="btn-ru" class="on" onclick="setLang('ru')">RU</button>
-        <button id="btn-en" onclick="setLang('en')">EN</button>
+      <div class="header-row2">
+        <button class="btn gray" id="btn-history" data-i18n="btn_history" onclick="openHistory()">История</button>
+        <button class="btn" id="btn-report" data-i18n="btn_report" onclick="openReport()">Сформировать отчёт →</button>
       </div>
-      <button class="btn gray" id="btn-history" data-i18n="btn_history" onclick="openHistory()">История</button>
-      <button class="btn" id="btn-report" data-i18n="btn_report" onclick="openReport()">Сформировать отчёт →</button>
     </div>
   </header>
 
@@ -278,8 +283,8 @@
           <div class="f-label" data-i18n="lbl_rent">Годовая аренда</div>
           <div class="f-box"><input id="q-rent" inputmode="decimal" value="110000" oninput="syncFromQuickInput('q-rent');recalc()"><span class="suffix">AED</span></div>
         </div>
-        <details class="adv-details" id="adv-quick">
-          <summary data-i18n="lbl_quick_expenses">Расходы</summary>
+        <details class="adv-details" id="adv-quick" ontoggle="if(M.tier==='quick')recalc()">
+          <summary data-i18n="lbl_quick_expenses">Дополнительные расходы</summary>
           <div class="cols2" style="margin-top:10px">
             <div class="field">
               <div class="f-label" data-i18n="lbl_area">Площадь</div>
@@ -616,7 +621,7 @@ const TR = {
     comm_deal_vat_cost:'VAT на сделку (доп. расход)',
     // Quick/Pro
     sec_quick_property:'Объект и аренда',
-    lbl_quick_expenses:'Расходы',
+    lbl_quick_expenses:'Дополнительные расходы',
     lbl_whats_pro:'Что входит в Pro?',
     pro_info_title:'Что входит в Pro?',
     pro_info_items:[
@@ -686,7 +691,7 @@ const TR = {
     comm_deal_vat_cost:'VAT on purchase (add. cost)',
     // Quick/Pro
     sec_quick_property:'Property & Rental',
-    lbl_quick_expenses:'Expenses',
+    lbl_quick_expenses:'Additional costs',
     lbl_whats_pro:"What's in Pro?",
     pro_info_title:"What's in Pro?",
     pro_info_items:[
@@ -1514,25 +1519,44 @@ const row = (l,v,opts={}) =>
   `<div class="row ${opts.bold?'bold':''} ${opts.indent?'indent':''}"><span class="l">${l}</span><span class="v" style="color:${opts.color||'var(--ink)'}">${v}</span></div>`;
 
 // ─── Quick mode calc & render ─────────────────────────────────────────────────
+function openQuickExpenses() {
+  document.getElementById('adv-quick').open = true;
+  recalc();
+}
+
 function recalcQuick() {
   sanitizeInputs();
   const r = calc();
   const EN = LANG === 'en';
-  const yColor = r.netYield>=6 ? 'var(--green)' : r.netYield>=4.5 ? 'var(--brass)' : 'var(--red)';
-  const heroColor = r.netYield<4.5 ? '#E8B59F' : '#E9D9A8';
   const aed_mo = EN ? 'AED/mo' : 'AED/мес';
-  const payback = r.noi > 0 ? r.entry / r.noi : Infinity;
+  const advOpen = document.getElementById('adv-quick').open;
+
+  // When block is closed, expenses = 0; NOI = rent
+  const noi_eff = advOpen ? r.noi : r.grossRevenue;
+  const netYield_eff = r.entry > 0 ? noi_eff / r.entry * 100 : 0;
+  const payback = noi_eff > 0 ? r.entry / noi_eff : Infinity;
+
+  const yColor = netYield_eff>=6 ? 'var(--green)' : netYield_eff>=4.5 ? 'var(--brass)' : 'var(--red)';
+  const heroColor = netYield_eff<4.5 ? '#E8B59F' : '#E9D9A8';
   const commLabel = r.vatEnabled
     ? (EN ? `Commission ${num('commPct')}% + VAT 5%` : `Комиссия ${num('commPct')}% + VAT 5%`)
     : (EN ? `Commission ${num('commPct')}%` : `Комиссия ${num('commPct')}%`);
+
+  const noAdvNote = !advOpen
+    ? `<div style="margin-top:4px;font-size:10.5px;opacity:.8">${
+        EN ? 'excl. additional costs' : 'без учёта доп. расходов'
+      } — <button onclick="openQuickExpenses()" style="border:none;background:none;padding:0;font-size:10.5px;text-decoration:underline;cursor:pointer;color:inherit;font-family:inherit">${
+        EN ? 'add' : 'указать'
+      }</button></div>`
+    : '';
 
   let html = `
   <div class="hero">
     <div class="kl">${EN ? 'Net Yield' : 'Чистая доходность'}</div>
     <div class="kl">${EN ? 'Gross Yield' : 'Валовая доходность'}</div>
-    <div class="kv" style="color:${heroColor}">${fmt(r.netYield,2)}%</div>
+    <div class="kv" style="color:${heroColor}">${fmt(netYield_eff,2)}%</div>
     <div class="kv">${fmt(r.grossYield,2)}%</div>
-    <div class="kd">${EN ? 'NOI / total entry cost' : 'NOI / вход в сделку'}</div>
+    <div class="kd">${EN ? 'NOI / total entry cost' : 'NOI / вход в сделку'}${noAdvNote}</div>
     <div class="kd">${EN ? 'rent / price' : 'аренда / цена'}</div>
   </div>
   <div class="section"><div class="sec-title">${EN ? 'Entry Cost' : 'Стоимость входа'}</div>
@@ -1544,10 +1568,10 @@ function recalcQuick() {
   </div>
   <div class="section"><div class="sec-title">${EN ? 'Annual Result' : 'Годовой результат'}</div>
   ${row(EN?'Annual rent':'Годовая аренда', fmt(r.grossRevenue)+' AED')}
-  ${row(EN?'Service charge':'Service charge', '−'+fmt(r.serviceCharge)+' AED', {indent:1, color:'var(--red)'})}
-  ${row(EN?'Repairs / reserve':'Ремонт / резерв', '−'+fmt(r.maint)+' AED', {indent:1, color:'var(--red)'})}
-  ${row(EN?'Net operating income (NOI)':'Чистый доход (NOI)', fmt(r.noi)+' AED/'+t('year_unit'), {bold:1, color:yColor})}
-  ${row(EN?'Per month':'В месяц', fmt(r.noi/12)+' '+aed_mo)}
+  ${advOpen && r.serviceCharge > 0 ? row('Service charge', '−'+fmt(r.serviceCharge)+' AED', {indent:1, color:'var(--red)'}) : ''}
+  ${advOpen && r.maint > 0 ? row(EN?'Repairs / reserve':'Ремонт / резерв', '−'+fmt(r.maint)+' AED', {indent:1, color:'var(--red)'}) : ''}
+  ${row(EN?'Net operating income (NOI)':'Чистый доход (NOI)', fmt(noi_eff)+' AED/'+t('year_unit'), {bold:1, color:yColor})}
+  ${row(EN?'Per month':'В месяц', fmt(noi_eff/12)+' '+aed_mo)}
   ${isFinite(payback) ? row(EN?'Payback period':'Окупаемость', fmt(payback,1)+' '+(EN?'yrs':'лет')) : ''}
   </div>
   <button class="btn gray" style="width:100%;margin-bottom:8px" onclick="saveToHistory(this)">${t('btn_save')}</button>`;
@@ -1559,7 +1583,10 @@ function buildReportQuick() {
   const EN = LANG === 'en';
   const name = document.getElementById('projectName').value || (EN ? 'Property' : 'Объект');
   const today = new Date().toLocaleDateString(EN ? 'en-GB' : 'ru-RU');
-  const payback = r.noi > 0 ? r.entry / r.noi : Infinity;
+  const advOpen = document.getElementById('adv-quick').open;
+  const noi_eff = advOpen ? r.noi : r.grossRevenue;
+  const netYield_eff = r.entry > 0 ? noi_eff / r.entry * 100 : 0;
+  const payback = noi_eff > 0 ? r.entry / noi_eff : Infinity;
   const scenario = (EN ? 'Ready · Cash · Long-term rental · ' : 'Готовый · Наличные · Долгосрок · ') + fmt(num('area')) + ' sqft';
   const commLabel = r.vatEnabled
     ? (EN ? 'Commission + VAT 5%' : 'Комиссия + VAT 5%')
@@ -1572,7 +1599,7 @@ function buildReportQuick() {
     <div style="font-size:13px;color:var(--sub)">${scenario}</div>
   </div>
   <div class="kpis">
-    <div class="kpi"><div class="l">${EN?'Net Yield':'Чистая доходность'}</div><div class="v">${fmt(r.netYield,2)}%</div></div>
+    <div class="kpi"><div class="l">${EN?'Net Yield':'Чистая доходность'}</div><div class="v">${fmt(netYield_eff,2)}%</div></div>
     <div class="kpi"><div class="l">${EN?'Gross Yield':'Валовая доходность'}</div><div class="v">${fmt(r.grossYield,2)}%</div></div>
     <div class="kpi"><div class="l">${EN?'Payback':'Окупаемость'}</div><div class="v">${isFinite(payback)?fmt(payback,1)+(EN?' yr':' лет'):'—'}</div></div>
   </div>
@@ -1584,18 +1611,19 @@ function buildReportQuick() {
   </div>
   <div class="rep-section"><h3>${EN?'Annual Result':'Годовой результат'}</h3>
   ${row(EN?'Annual rent':'Годовая аренда', fmt(r.grossRevenue)+' AED')}
-  ${row(EN?'Operating expenses':'Расходы', '−'+fmt(r.opex)+' AED', {indent:1, color:'var(--red)'})}
-  ${row(EN?'Net operating income (NOI)':'Чистый доход (NOI)', fmt(r.noi)+' AED/'+t('year_unit'), {bold:1, color:'var(--green)'})}
-  ${row(EN?'Per month':'В месяц', fmt(r.noi/12)+' '+(EN?'AED/mo':'AED/мес'))}
+  ${advOpen && r.serviceCharge > 0 ? row('Service charge', '−'+fmt(r.serviceCharge)+' AED', {indent:1, color:'var(--red)'}) : ''}
+  ${advOpen && r.maint > 0 ? row(EN?'Repairs / reserve':'Ремонт / резерв', '−'+fmt(r.maint)+' AED', {indent:1, color:'var(--red)'}) : ''}
+  ${row(EN?'Net operating income (NOI)':'Чистый доход (NOI)', fmt(noi_eff)+' AED/'+t('year_unit'), {bold:1, color:'var(--green)'})}
+  ${row(EN?'Per month':'В месяц', fmt(noi_eff/12)+' '+(EN?'AED/mo':'AED/мес'))}
   </div>
   <div class="rep-section"><h3>${EN?'Returns':'Доходность'}</h3>
-  ${row(EN?'Net yield':'Чистая доходность', fmt(r.netYield,2)+'%', {bold:1, color:'var(--green)'})}
+  ${row(EN?'Net yield':'Чистая доходность', fmt(netYield_eff,2)+'%', {bold:1, color:'var(--green)'})}
   ${row(EN?'Gross yield':'Валовая доходность', fmt(r.grossYield,2)+'%')}
   ${isFinite(payback)?row(EN?'Payback period':'Окупаемость', fmt(payback,1)+' '+(EN?'yrs':'лет')):''}
   </div>
   <div class="rep-foot">${EN
-    ?`Service charge ${num('q-scRate')||num('scRate')} AED/sqft · Repairs reserve ${fmt(r.maint)} AED/yr. Indicative only, not investment advice. · ${today}`
-    :`Service charge ${num('q-scRate')||num('scRate')} AED/sqft · Резерв на ремонт ${fmt(r.maint)} AED/год. Расчёт оценочный, не является инвестиционной рекомендацией. · ${today}`
+    ?`Indicative only, not investment advice. · ${today}`
+    :`Расчёт оценочный, не является инвестиционной рекомендацией. · ${today}`
   }</div>`;
   document.getElementById('report').innerHTML = html;
 }
